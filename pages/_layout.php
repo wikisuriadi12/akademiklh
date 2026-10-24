@@ -50,6 +50,7 @@ if ($showApp) {
             ['penjualan', 'Penjualan', 'receipt', Auth::can('penjualan'), 0],
             ['dompet', 'Dompet Santri', 'wallet', Auth::can('dompet'), 0],
             ['gudang', 'Stok Gudang', 'box', Auth::can('gudang.view'), $rendahN],
+            ['akun_pos', 'Akun LH Mart', 'shield', Auth::can('users'), 0],
         ],
         'Sistem' => [
             ['users', 'Pengguna', 'shield', Auth::can('users'), 0],

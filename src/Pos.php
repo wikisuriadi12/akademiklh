@@ -81,7 +81,7 @@ final class Pos
      * Catat penjualan.
      * @param array<int,int> $items barang_id => qty
      */
-    public static function jual(string $unit, ?int $santriId, array $items, string $metode, int $dibayar, ?int $userId, ?string $scope, int $diskon = 0): int
+    public static function jual(string $unit, ?int $santriId, array $items, string $metode, int $dibayar, ?int $userId, ?string $scope, int $diskon = 0, ?string $pelanggan = null): int
     {
         if (!isset(Domain::UNIT[$unit])) { throw new InvalidArgumentException('Unit tidak valid.'); }
         if ($scope !== null && $scope !== $unit) { throw new InvalidArgumentException('Unit di luar cakupan akun Anda.'); }
@@ -97,7 +97,8 @@ final class Pos
             if ($s['unit'] !== $unit) { throw new InvalidArgumentException('Santri berada di unit lain.'); }
         }
         if ($diskon < 0) { throw new InvalidArgumentException('Diskon tidak valid.'); }
-        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId, $diskon) {
+        $pelanggan = $santriId ? null : mb_substr(trim((string) $pelanggan), 0, 80);
+        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId, $diskon, $pelanggan) {
             $baris = []; $total = 0;
             foreach ($items as $bid => $qty) {
                 $b = Gudang::find((int) $bid);
@@ -118,6 +119,9 @@ final class Pos
             $no = 'PJ-' . date('Y') . '-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
             Db::exec('UPDATE penjualan SET no_struk = ? WHERE id = ?', [$no, $id]);
             if ($diskon > 0) { Db::exec('UPDATE penjualan SET diskon = ? WHERE id = ?', [$diskon, $id]); }
+            if ($pelanggan !== null && $pelanggan !== '') {
+                try { Db::exec('UPDATE penjualan SET pelanggan = ? WHERE id = ?', [$pelanggan, $id]); } catch (PDOException $e) { /* kolom belum dimigrasi */ }
+            }
             foreach ($baris as [$b, $qty]) {
                 Gudang::ubah((int) $b['id'], $unit, -$qty, 'jual', ['ref_id' => $id, 'catatan' => $no, 'user_id' => $userId]);
                 Db::exec('INSERT INTO penjualan_item (penjualan_id, barang_id, nama, qty, harga, harga_beli, subtotal) VALUES (?,?,?,?,?,?,?)',

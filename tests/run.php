@@ -206,6 +206,13 @@ Gudang::masuk($b2, 'ikhwan', 10, 3000, '', '', null, null);
 throws('jual tanpa barang ditolak', fn() => Pos::jual('ikhwan', null, [], 'tunai', 0, null, null));
 throws('jual uang kurang ditolak', fn() => Pos::jual('ikhwan', null, [$b1 => 2], 'tunai', 4000, null, null));
 throws('jual melebihi stok ditolak', fn() => Pos::jual('ikhwan', null, [$b1 => 50], 'tunai', 999999, null, null));
+// pelanggan umum / pegawai di kasir
+$idU = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Pegawai: Budi');
+ok('penjualan pegawai menyimpan nama pelanggan', Db::val('SELECT pelanggan FROM penjualan WHERE id = ?', [$idU]) === 'Pegawai: Budi');
+$idV = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Umum');
+ok('penjualan umum tanpa santri tersimpan', Db::val('SELECT pelanggan FROM penjualan WHERE id = ?', [$idV]) === 'Umum' && Db::val('SELECT santri_id FROM penjualan WHERE id = ?', [$idV]) === null);
+Pos::batalkan($idU, 'uji', null, null); Pos::batalkan($idV, 'uji', null, null);
+
 ok('gagal jual tidak mengurangi stok (rollback)', Gudang::stok($b1, 'ikhwan') === 15);
 $pj = Pos::jual('ikhwan', null, [$b1 => 2, $b2 => 1], 'tunai', 20000, null, null);
 $pjr = Pos::find($pj);

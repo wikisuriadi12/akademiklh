@@ -14,7 +14,7 @@ if (is_post()) {
         $dibayar = (int) preg_replace('/\D/', '', in_str('dibayar', '0'));
         $diskon = (int) preg_replace('/\D/', '', in_str('diskon', '0'));
         if (in_str('metode') === 'qris' && in_str('qris_ok') !== '1') { throw new InvalidArgumentException('Centang konfirmasi bahwa pembayaran QRIS sudah masuk.'); }
-        $id = Pos::jual($unit, $sidP ?: null, $items, in_str('metode'), $dibayar, Auth::id(), $scope, $diskon);
+        $id = Pos::jual($unit, $sidP ?: null, $items, in_str('metode'), $dibayar, Auth::id(), $scope, $diskon, in_str('pelanggan'));
         flash('Penjualan tersimpan.');
         redirect('?p=struk&id=' . $id);
     } catch (InvalidArgumentException $ex) {
@@ -61,11 +61,12 @@ $rail = [
     ['?p=penjualan', 'Riwayat', 'clock', Auth::can('penjualan'), false],
     ['?p=gudang', 'Stok', 'box', Auth::can('gudang.view'), false],
     ['?p=dompet', 'Santri', 'users', Auth::can('dompet'), false],
+    ['?p=akun_pos', 'Akun', 'shield', Auth::can('users'), false],
 ];
 ob_start(); ?>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap">
-<link rel="stylesheet" href="assets/pos.css?v=1">
+<link rel="stylesheet" href="assets/pos.css?v=2">
 <div class="kp" data-cfg="<?= e(json_encode($cfg, JSON_UNESCAPED_UNICODE)) ?>">
   <nav class="kp-rail" aria-label="Menu kasir">
     <a class="kp-logo" href="?p=pos" title="<?= e(Settings::get('nama_lembaga')) ?>">LH</a>
@@ -84,8 +85,8 @@ ob_start(); ?>
       <div><h1>Kasir</h1><p><?= e($koperasi) ?> &middot; <?= e($tanggal) ?></p></div>
       <div class="kp-seg" role="tablist">
         <?php foreach (Domain::UNIT as $k => $v): $boleh = $scope === null || $scope === $k; ?>
-          <?php if ($boleh): ?><a class="<?= $unit === $k ? 'on' : '' ?>" href="?p=pos&amp;unit=<?= e($k) ?>">Pondok <?= e($v) ?></a>
-          <?php else: ?><span class="off">Pondok <?= e($v) ?></span><?php endif; ?>
+          <?php if ($boleh): ?><a class="<?= $unit === $k ? 'on' : '' ?>" href="?p=pos&amp;unit=<?= e($k) ?>">Unit <?= e($v) ?></a>
+          <?php else: ?><span class="off">Unit <?= e($v) ?></span><?php endif; ?>
         <?php endforeach; ?>
       </div>
     </header>
@@ -114,7 +115,7 @@ ob_start(); ?>
       <?php endforeach; ?>
     </div>
     <p class="kp-none" id="kp-none" hidden>Tidak ada barang yang cocok.</p>
-    <p class="kp-foot" id="kp-foot" data-total="<?= count($barang) ?>" data-unit="<?= e(Domain::UNIT[$unit]) ?>">Menampilkan <?= count($barang) ?> dari <?= count($barang) ?> barang untuk Pondok <?= e(Domain::UNIT[$unit]) ?></p>
+    <p class="kp-foot" id="kp-foot" data-total="<?= count($barang) ?>" data-unit="<?= e(Domain::UNIT[$unit]) ?>">Menampilkan <?= count($barang) ?> dari <?= count($barang) ?> barang untuk Unit <?= e(Domain::UNIT[$unit]) ?></p>
   </main>
 
   <aside class="kp-panel">
@@ -126,6 +127,7 @@ ob_start(); ?>
       <input type="hidden" name="diskon" id="f-diskon" value="0">
       <input type="hidden" name="dibayar" id="f-dibayar" value="0">
       <input type="hidden" name="qris_ok" id="f-qris" value="0">
+      <input type="hidden" name="pelanggan" id="f-pelanggan" value="Umum">
       <div id="f-items"></div>
 
       <div class="kp-ph"><h2>Pesanan #<?= e(str_pad((string) $noPesanan, 4, '0', STR_PAD_LEFT)) ?></h2><span class="kp-pill" id="kp-n">0 item</span><button type="button" class="kp-clear" id="kp-clear">Kosongkan</button></div>
@@ -136,6 +138,13 @@ ob_start(); ?>
         <div class="kp-line"><span>Diskon</span><button type="button" class="kp-disc" id="kp-disc">+ Tambah diskon</button></div>
         <div class="kp-total"><span>Total</span><b id="kp-total">Rp 0</b></div>
       </div>
+      <div class="kp-cust" id="kp-cust">
+        <span>Pelanggan</span>
+        <button type="button" data-c="umum" class="on">Umum</button>
+        <button type="button" data-c="pegawai">Pegawai</button>
+        <button type="button" data-c="santri" id="kp-c-santri">Santri</button>
+      </div>
+      <input class="kp-peg" id="in-pegawai" placeholder="Nama pegawai (boleh dikosongkan)" maxlength="60" hidden>
       <div class="kp-tiles" id="kp-tiles">
         <button type="button" data-m="tunai"><?= icon('cash', 22) ?><span>Tunai</span></button>
         <button type="button" data-m="qris" <?= $qrisOn ? '' : 'disabled title="QRIS belum diaktifkan di Pengaturan"' ?>><?= icon('qr', 22) ?><span>BNI QRIS</span></button>
@@ -159,5 +168,5 @@ ob_start(); ?>
   <ul class="kp-sl" id="sl-hasil"></ul>
   <div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Tutup</button></div>
 </div></dialog>
-<script src="assets/pos.js?v=1" defer></script>
+<script src="assets/pos.js?v=2" defer></script>
 <?php render('Kasir', ob_get_clean(), 'bare');

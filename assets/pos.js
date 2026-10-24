@@ -18,7 +18,7 @@
     prod[c.dataset.id] = { id: c.dataset.id, nama: c.dataset.nama, kode: c.dataset.kode, harga: +c.dataset.harga, stok: +c.dataset.stok, el: c };
   });
 
-  var cart = {}, diskon = 0, santri = null, metode = 'tunai', kat = '', cari = '';
+  var cart = {}, diskon = 0, santri = null, metode = 'tunai', kat = '', cari = '', tipe = 'umum';
   try { var m0 = localStorage.getItem('kp-metode'); if (m0 === 'qris' && qris.aktif) { metode = 'qris'; } if (m0 === 'tunai') { metode = 'tunai'; } } catch (x) {}
   if (metode === 'tunai' && qris.aktif && !localStorage.getItem('kp-metode')) { metode = 'qris'; }
 
@@ -66,6 +66,11 @@
     var dk = $('#kp-disc');
     dk.textContent = diskon > 0 ? '− ' + rp(diskon) + '  · ubah' : '+ Tambah diskon';
     dk.classList.toggle('set', diskon > 0);
+    // pelanggan
+    tipe = santri ? 'santri' : (tipe === 'santri' ? 'umum' : tipe);
+    $$('#kp-cust button').forEach(function (b) { b.classList.toggle('on', b.dataset.c === tipe); });
+    $('#kp-c-santri').textContent = santri ? santri.nama.split(' ')[0] : 'Santri';
+    $('#in-pegawai').hidden = tipe !== 'pegawai';
     // metode
     $$('#kp-tiles button').forEach(function (b) { b.classList.toggle('on', b.dataset.m === metode); });
     $('#kp-dompet-l').textContent = santri ? santri.nama.split(' ')[0] : 'Saldo Santri';
@@ -80,7 +85,7 @@
       c.hidden = !ok; if (ok) { tampil++; }
     });
     var f = $('#kp-foot');
-    f.textContent = 'Menampilkan ' + tampil + ' dari ' + f.dataset.total + ' barang untuk Pondok ' + f.dataset.unit;
+    f.textContent = 'Menampilkan ' + tampil + ' dari ' + f.dataset.total + ' barang untuk Unit ' + f.dataset.unit;
     $('#kp-none').hidden = tampil > 0;
   }
 
@@ -107,6 +112,17 @@
     var b = e.target.closest('button'); if (!b) { return; }
     $$('#kp-chips button').forEach(function (x) { x.classList.toggle('on', x === b); });
     kat = b.dataset.kat; render();
+  });
+
+  // jenis pelanggan
+  $('#kp-cust').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) { return; }
+    var c = b.dataset.c;
+    if (c === 'santri') { bukaSantri(); return; }
+    santri = null; tipe = c;
+    if (metode === 'dompet') { metode = 'tunai'; }
+    render();
+    if (c === 'pegawai') { $('#in-pegawai').focus(); }
   });
 
   // metode bayar
@@ -205,7 +221,9 @@
   function kirim(x) {
     $('#f-metode').value = metode;
     $('#f-diskon').value = diskon;
-    $('#f-santri').value = metode === 'dompet' && santri ? santri.id : '';
+    $('#f-santri').value = santri ? santri.id : '';
+    var nm = ($('#in-pegawai').value || '').trim();
+    $('#f-pelanggan').value = santri ? '' : (tipe === 'pegawai' ? 'Pegawai' + (nm ? ': ' + nm : '') : 'Umum');
     $('#f-dibayar').value = x.dibayar || 0;
     $('#f-qris').value = x.qris ? 1 : 0;
     $('#f-items').innerHTML = Object.keys(cart).map(function (id) { return '<input type="hidden" name="qty[' + id + ']" value="' + cart[id] + '">'; }).join('');

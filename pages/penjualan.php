@@ -8,7 +8,7 @@ $metode = in_array(in_str('metode'), ['tunai', 'dompet', 'qris'], true) ? in_str
 $rows = Pos::daftar(['dari' => $dari, 'sampai' => $sampai, 'unit' => $unit, 'metode' => $metode], $scope, 300);
 if (in_str('csv') === '1') {
     csv_out('penjualan-' . $dari . '-' . $sampai . '.csv', ['No struk', 'Tanggal', 'Unit', 'Santri', 'Metode', 'Total', 'Status', 'Kasir'],
-        array_map(static fn($r) => [$r['no_struk'], $r['tanggal'], Domain::UNIT[$r['unit']], $r['santri_nama'] ?? '', $r['metode'], $r['total'], $r['dibatalkan'] ? 'batal' : 'sah', $r['kasir'] ?? ''], $rows));
+        array_map(static fn($r) => [$r['no_struk'], $r['tanggal'], Domain::UNIT[$r['unit']], $r['santri_nama'] ?? ($r['pelanggan'] ?? ''), $r['metode'], $r['total'], $r['dibatalkan'] ? 'batal' : 'sah', $r['kasir'] ?? ''], $rows));
     exit;
 }
 $rk = Pos::ringkas($dari, $sampai, $unit ?: null);
@@ -44,7 +44,7 @@ ob_start(); ?>
     <tbody>
     <?php foreach ($rows as $r): ?>
       <tr><td><b><?= e($r['no_struk']) ?></b></td><td data-label="Tanggal"><?= e($r['tanggal']) ?></td><td data-label="Unit"><?= e(Domain::UNIT[$r['unit']]) ?></td>
-        <td data-label="Santri"><?= e($r['santri_nama'] ?? '-') ?></td><td data-label="Metode"><?= ['tunai' => 'Tunai', 'dompet' => 'Dompet', 'qris' => 'QRIS'][$r['metode']] ?? e($r['metode']) ?></td>
+        <td data-label="Pelanggan"><?= e($r['santri_nama'] ?? (($r['pelanggan'] ?? '') !== '' ? $r['pelanggan'] : 'Umum')) ?></td><td data-label="Metode"><?= ['tunai' => 'Tunai', 'dompet' => 'Dompet', 'qris' => 'QRIS'][$r['metode']] ?? e($r['metode']) ?></td>
         <td class="r" data-label="Total"><?= rp($r['total']) ?></td>
         <td data-label="Status"><?= $r['dibatalkan'] ? '<span class="badge b-belum">Batal</span>' : '<span class="badge b-lunas">Sah</span>' ?></td>
         <td class="r"><a class="btn sm ghost" href="?p=struk&amp;id=<?= (int) $r['id'] ?>">Struk</a></td></tr>

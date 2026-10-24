@@ -30,7 +30,7 @@ $routes = [
     'va' => 'va', 'va_baru' => 'va_baru', 'va_detail' => 'va_detail', 'bni_callback' => 'bni_callback',
     'pos' => 'pos', 'pos_cari' => 'pos_cari', 'struk' => 'struk', 'penjualan' => 'penjualan', 'dompet' => 'dompet',
     'gudang' => 'gudang', 'gudang_item' => 'gudang_item', 'barang' => 'barang',
-    'akun' => 'akun', 'users' => 'users',
+    'akun' => 'akun', 'users' => 'users', 'akun_pos' => 'akun_pos',
     // halaman publik (tanpa login)
     'cek' => 'cek', 'daftar' => 'daftar',
 ];

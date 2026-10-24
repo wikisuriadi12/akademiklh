@@ -22,9 +22,9 @@ ob_start(); ?>
     <?php if (Auth::can('pos')): ?><a class="btn ghost" href="?p=pos&amp;unit=<?= e($p['unit']) ?>">Transaksi baru</a><?php endif; ?>
     <a class="btn ghost" href="?p=penjualan">Daftar penjualan</a></div></div>
 <div class="card struk">
-  <div class="rh"><b style="font-size:1.05rem">Koperasi <?= e($cfgS['nama_lembaga']) ?></b><br><small>Pondok <?= e(Domain::UNIT[$p['unit']]) ?><?= $cfgS['alamat'] ? ' &middot; ' . e($cfgS['alamat']) : '' ?></small>
+  <div class="rh"><b style="font-size:1.05rem">Koperasi <?= e($cfgS['nama_lembaga']) ?></b><br><small>Unit <?= e(Domain::UNIT[$p['unit']]) ?><?= $cfgS['alamat'] ? ' &middot; ' . e($cfgS['alamat']) : '' ?></small>
     <?php if ($batal): ?><br><span class="badge b-belum">DIBATALKAN</span><?php endif; ?></div>
-  <small><?= e($p['no_struk']) ?> &middot; <?= e(substr($p['created_at'], 0, 16)) ?><br>Kasir: <?= e($p['kasir'] ?: '-') ?><?= $p['santri_nama'] ? '<br>Santri: ' . e($p['santri_nama']) . ' (' . e($p['nis']) . ')' : '' ?></small>
+  <small><?= e($p['no_struk']) ?> &middot; <?= e(substr($p['created_at'], 0, 16)) ?><br>Kasir: <?= e($p['kasir'] ?: '-') ?><?= $p['santri_nama'] ? '<br>Santri: ' . e($p['santri_nama']) . ' (' . e($p['nis']) . ')' : '<br>Pelanggan: ' . e(($p['pelanggan'] ?? '') !== '' ? $p['pelanggan'] : 'Umum') ?></small>
   <table style="margin-top:10px"><?php foreach ($items as $i): ?>
     <tr><td><?= e($i['nama']) ?><br><small><?= (int) $i['qty'] ?> &times; <?= rp($i['harga']) ?></small></td><td class="r"><?= rp($i['subtotal']) ?></td></tr>
   <?php endforeach; ?></table>
