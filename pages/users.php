@@ -1,5 +1,9 @@
 <?php
 Auth::require('users');
+// Akun POS (kasir, gudang) tidak diurus dari sistem akademik.
+$peranPos = ['kasir', 'gudang'];
+$peranAda = array_diff_key(Domain::ROLE, array_flip($peranPos));
+if (is_post() && in_array(in_str('role'), $peranPos, true)) { flash('Peran POS tidak diatur dari sistem akademik.', 'warn'); redirect('?p=users'); }
 if (is_post()) {
     csrf_check();
     try {
@@ -26,7 +30,7 @@ if (is_post()) {
     redirect('?p=users');
 }
 $ed = ($eid = (int) in_str('edit', '0')) ? Db::one('SELECT id, username, nama, role, unit_akses, aktif FROM users WHERE id = ?', [$eid]) : null;
-$users = Db::all('SELECT id, username, nama, role, unit_akses, aktif FROM users ORDER BY username');
+$users = Db::all('SELECT id, username, nama, role, unit_akses, aktif FROM users WHERE role NOT IN (\'kasir\', \'gudang\') ORDER BY username');
 ob_start(); ?>
 <div class="page-h"><div><h1>Pengguna</h1><p><?= count($users) ?> akun petugas</p></div></div>
 <div class="card">
@@ -36,7 +40,7 @@ ob_start(); ?>
     <?php foreach ($users as $u): $ll = Auth::lastLogin((int) $u['id']); ?>
       <tr><td class="who-c"><div class="who"><?= avatar($u['nama']) ?><span><b><?= e($u['nama']) ?></b><small><?= e($u['username']) ?></small></span></div></td>
         <td data-label="Peran"><?= e(Domain::ROLE[$u['role']]) ?></td>
-        <td data-label="Akses sistem"><?php foreach (Domain::SISTEM as $k => $sx): if (Domain::sistemBoleh($k, $u['role'])): ?><span class="badge sysb-<?= e(explode(' ', str_replace('Sistem ', '', $sx['nama']))[0]) ?>"><?= e(str_replace('Sistem ', '', $sx['nama'])) ?></span> <?php endif; endforeach; ?></td>
+        <td data-label="Akses sistem"><?php foreach (['pendidikan' => Domain::SISTEM['pendidikan']] as $k => $sx): if (Domain::sistemBoleh($k, $u['role'])): ?><span class="badge sysb-<?= e(explode(' ', str_replace('Sistem ', '', $sx['nama']))[0]) ?>"><?= e(str_replace('Sistem ', '', $sx['nama'])) ?></span> <?php endif; endforeach; ?></td>
         <td data-label="Unit"><?= e($u['unit_akses'] === 'semua' ? 'Semua' : Domain::UNIT[$u['unit_akses']]) ?></td>
         <td data-label="Login terakhir"><?= $ll ? e(substr($ll, 0, 16)) : '<span class="mut">Belum pernah</span>' ?></td>
         <td data-label="Status"><?= $u['aktif'] ? '<span class="badge b-aktif">Aktif</span>' : '<span class="badge">Nonaktif</span>' ?></td>
@@ -49,7 +53,7 @@ ob_start(); ?>
 <div class="grid g2" id="form-edit" style="margin-bottom:16px">
   <form method="post" class="card form" autocomplete="off"><h2>Ubah akun: <?= e($ed['username']) ?></h2><?= csrf_field() ?><input type="hidden" name="aksi" value="ubah"><input type="hidden" name="uid" value="<?= (int) $ed['id'] ?>">
     <label>Nama <input name="nama" value="<?= e($ed['nama']) ?>" required></label>
-    <label>Peran <select name="role"><?= options(Domain::ROLE, $ed['role']) ?></select></label>
+    <label>Peran <select name="role"><?= options($peranAda, $ed['role']) ?></select></label>
     <label>Cakupan unit <select name="unit"><?= options(['semua' => 'Semua unit', 'ikhwan' => 'Ikhwan saja', 'akhwat' => 'Akhwat saja'], $ed['unit_akses']) ?></select></label>
     <button class="btn"><?= icon('check') ?> Simpan</button></form>
   <div>
@@ -65,12 +69,12 @@ ob_start(); ?>
 <?php endif; ?>
 <form method="post" class="card form" autocomplete="off">
   <h2>Tambah pengguna</h2>
-  <p class="mut" style="margin:0 0 12px">Peran menentukan sistem mana yang boleh dimasuki: Pendidikan (admin, TU, bendahara, pimpinan), POS (kasir, bendahara, admin), Gudang (gudang, pimpinan, admin).</p>
+  <p class="mut" style="margin:0 0 12px">Peran menentukan sistem mana yang boleh dimasuki: Admin, TU, bendahara, pimpinan, ustadz, dan pembina.</p>
   <?= csrf_field() ?>
   <fieldset style="border:0;padding:0;margin:0">
     <label>Username <input name="username" required autocapitalize="none"></label>
     <label>Nama <input name="nama" required></label>
-    <label>Peran <select name="role"><?= options(Domain::ROLE) ?></select></label>
+    <label>Peran <select name="role"><?= options($peranAda) ?></select></label>
     <label>Cakupan unit <select name="unit"><?= options(['semua' => 'Semua unit', 'ikhwan' => 'Ikhwan saja', 'akhwat' => 'Akhwat saja']) ?></select></label>
     <label>Password awal (min. 10 karakter) <input type="password" name="password" required minlength="10"></label>
   </fieldset>
