@@ -18,7 +18,7 @@ final class Domain
     /** Halaman milik tiap sistem (dipakai untuk membatasi subdomain). */
     public const HALAMAN = [
         'pendidikan' => ['dashboard', 'santri', 'santri_form', 'santri_detail', 'pendaftar', 'naik', 'impor', 'tarif', 'tagihan', 'bayar', 'kuitansi', 'laporan',
-            'tahfidz', 'kehadiran', 'izin', 'va', 'va_baru', 'va_detail', 'pengaturan', 'audit', 'users'],
+            'tahfidz', 'kehadiran', 'izin', 'va', 'va_baru', 'va_detail', 'pengaturan', 'audit', 'users', 'setup'],
         'pos' => ['pos', 'struk', 'penjualan', 'dompet', 'gudang', 'gudang_item', 'barang'],
         'wali' => ['cek', 'daftar'],
     ];
