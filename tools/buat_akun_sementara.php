@@ -17,6 +17,7 @@ $aksi = $argv[1] ?? '';
 
 // username => [nama, peran]. Semua cakupan unit "semua" supaya bisa menguji ikhwan & akhwat.
 $akun = [
+    'tmp_admin'     => ['Admin Sementara',     'admin'],
     'tmp_kasir'     => ['Kasir Sementara',     'kasir'],
     'tmp_gudang'    => ['Gudang Sementara',    'gudang'],
     'tmp_bendahara' => ['Bendahara Sementara', 'bendahara'],
