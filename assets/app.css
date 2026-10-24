@@ -250,3 +250,20 @@ code{background:var(--surface2);border:1px solid var(--line);padding:1px 6px;bor
 .iz-menunggu{background:var(--warn-l);color:var(--warn);border-color:transparent}.iz-disetujui,.iz-keluar{background:var(--info-l);color:var(--info);border-color:transparent}
 .iz-kembali{background:var(--ok-l);color:var(--ok);border-color:transparent}.iz-ditolak,.iz-batal{color:var(--mut)}
 .izin-grid{margin-bottom:16px}
+
+/* ===== Login akademik berfoto ===== */
+.auth-foto{position:relative;background:#0b3b36 url(bg-akademik.jpg) center/cover no-repeat;grid-template-columns:1.25fr minmax(380px,.75fr)}
+.auth-foto::before{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(4,40,36,.88) 0%,rgba(6,60,54,.62) 45%,rgba(6,60,54,.25) 100%);pointer-events:none}
+.auth-foto>section{position:relative}
+.auth-foto .auth-hero{background:none;text-shadow:0 1px 12px rgba(0,0,0,.35)}
+.auth-foto .auth-hero h1{font-size:2.6rem;line-height:1.12;margin:14px 0 12px}
+.auth-foto .auth-hero p{font-size:1.05rem;max-width:460px}
+.auth-tag{display:inline-block;padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);font-size:.8rem;font-weight:700;letter-spacing:.04em}
+.auth-foto .auth-box .card{background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.4);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.auth-mobile-brand{display:none;align-items:center;gap:10px;margin-bottom:16px}.auth-mobile-brand b{display:block;line-height:1.2}.auth-mobile-brand small{display:block}
+@media (max-width:860px){
+  .auth-foto{display:grid;grid-template-columns:1fr;min-height:100vh;background-position:30% center}
+  .auth-foto::before{background:linear-gradient(180deg,rgba(4,40,36,.55),rgba(4,40,36,.8))}
+  .auth-foto .auth-box{min-height:100vh;align-items:center}
+  .auth-mobile-brand{display:flex}
+}

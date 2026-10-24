@@ -27,24 +27,33 @@ if (is_post()) {
     }
 }
 $lembaga = Settings::get('nama_lembaga', 'Yayasan Luqmanul Hakim');
+$foto = $sistem === 'pendidikan';
+$portalAda = !Host::aktif() || !empty(Host::cfg()['portal_utama']);
 ob_start(); ?>
-<div class="auth sys-<?= e($sistem) ?>">
+<div class="auth sys-<?= e($sistem) ?><?= $foto ? ' auth-foto' : '' ?>">
   <section class="auth-hero">
-    <div class="brand"><span class="logo" style="background:rgba(255,255,255,.18)"><?= icon('book', 20) ?></span><div><b><?= e($lembaga) ?></b><small style="color:rgba(255,255,255,.75)"><?= e($S['nama']) ?></small></div></div>
+    <div class="brand"><span class="logo" style="background:rgba(255,255,255,.18)"><?= icon('book', 20) ?></span><div><b><?= e($lembaga) ?></b><small style="color:rgba(255,255,255,.8)"><?= e($S['nama']) ?></small></div></div>
     <div>
-      <h1><?= e($S['nama']) ?></h1>
-      <p><?= e($S['desc']) ?></p>
-      <ul>
-        <li><?= icon('check') ?> Akun dan menu khusus bagian ini</li>
-        <li><?= icon('check') ?> Hanya untuk: <?= e($S['untuk']) ?></li>
-      </ul>
+      <?php if ($foto): ?>
+        <span class="auth-tag">TKQ · Ula · Wustha · Ulya</span>
+        <h1>Sistem Akademik<br>Pondok Pesantren</h1>
+        <p>Data santri, tahfidz, kehadiran, perizinan, dan keuangan SPP Pondok Ikhwan &amp; Akhwat dalam satu tempat.</p>
+      <?php else: ?>
+        <h1><?= e($S['nama']) ?></h1>
+        <p><?= e($S['desc']) ?></p>
+        <ul>
+          <li><?= icon('check') ?> Akun dan menu khusus bagian ini</li>
+          <li><?= icon('check') ?> Hanya untuk: <?= e($S['untuk']) ?></li>
+        </ul>
+      <?php endif; ?>
     </div>
-    <small style="opacity:.7">Akses khusus petugas yayasan.</small>
+    <small style="opacity:.8">Akses khusus petugas yayasan.</small>
   </section>
   <section class="auth-box">
     <div class="card">
-      <h2 class="big" style="margin-bottom:4px">Masuk ke <?= e($S['nama']) ?></h2>
-      <p class="mut" style="margin:0 0 16px">Gunakan akun petugas Anda.</p>
+      <?php if ($foto): ?><div class="auth-mobile-brand"><span class="logo"><?= icon('book', 20) ?></span><div><b><?= e($lembaga) ?></b><small class="mut">Sistem Akademik</small></div></div><?php endif; ?>
+      <h2 class="big" style="margin-bottom:4px"><?= $foto ? 'Masuk' : 'Masuk ke ' . e($S['nama']) ?></h2>
+      <p class="mut" style="margin:0 0 16px"><?= $foto ? 'Untuk admin, TU, bendahara, pimpinan, ustadz, dan pembina.' : 'Gunakan akun petugas Anda.' ?></p>
       <?php if ($err): ?><div class="note err"><?= e($err) ?></div><?php endif; ?>
       <form method="post" autocomplete="off">
         <?= csrf_field() ?>
@@ -52,7 +61,10 @@ ob_start(); ?>
         <label>Password <input type="password" name="password" required></label>
         <button class="btn" style="width:100%">Masuk <?= icon('arrow-right') ?></button>
       </form>
-      <p style="margin:18px 0 0;font-size:.88rem" class="mut"><a href="<?= e(Host::url('portal')) ?>">&larr; Pilih sistem lain</a></p>
+      <p style="margin:18px 0 0;font-size:.88rem" class="mut">
+        <?php if ($portalAda): ?><a href="<?= e(Host::url('portal')) ?>">&larr; Pilih sistem lain</a> &middot; <?php endif; ?>
+        Wali santri? <a href="<?= e(Host::url('wali', 'p=cek')) ?>">Cek tagihan</a>
+      </p>
     </div>
   </section>
 </div>

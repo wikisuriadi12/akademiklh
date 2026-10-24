@@ -424,7 +424,7 @@ ok('cek tagihan di subdomain akademik dialihkan ke wali', Host::periksa('cek', '
 ok('domain utama hanya portal', Host::periksa('portal', 'portal') === null && Host::periksa('dashboard', 'portal') === 'https://akademik.contoh.sch.id/?p=dashboard');
 Host::$override = ['domain' => 'yayasanluqmanulhakimmarelan.com', 'subdomain' => ['pendidikan' => 'akademiklh', 'pos' => 'poslh', 'wali' => 'walilh'], 'portal_utama' => false];
 ok('domain nyata: akademiklh dikenali', Host::sistem('akademiklh.yayasanluqmanulhakimmarelan.com') === 'pendidikan' && Host::url('pos') === 'https://poslh.yayasanluqmanulhakimmarelan.com/');
-ok('portal tanpa domain utama tampil di akademiklh', Host::url('portal') === 'https://akademiklh.yayasanluqmanulhakimmarelan.com/?p=portal' && Host::periksa('portal', 'pendidikan') === null && Host::periksa('portal', 'pos') === 'https://akademiklh.yayasanluqmanulhakimmarelan.com/?p=portal');
+ok('tanpa portal utama: halaman depan akademiklh = login akademik', Host::url('portal') === 'https://akademiklh.yayasanluqmanulhakimmarelan.com/' && Host::periksa('portal', 'pendidikan') === '?p=login&sistem=pendidikan' && Host::periksa('portal', 'pos') === '?p=login&sistem=pos');
 ok('callback BNI boleh di semua host', Host::periksa('bni_callback', 'wali') === null && Host::periksa('bni_callback', 'portal') === null);
 ok('semua halaman terdaftar punya pemilik', (function () { foreach (glob(APP_ROOT . '/pages/*.php') as $f) { $p = basename($f, '.php'); if ($p[0] === '_' || $p === 'portal') { continue; } if (!Host::milik($p) && !in_array($p, Domain::HALAMAN_UMUM, true)) { echo "  tanpa pemilik: $p\n"; return false; } } return true; })());
 Host::$override = null;

@@ -47,7 +47,7 @@ final class Host
             if ($sistem === 'wali') { return '?' . ($query !== '' ? $query : 'p=cek'); }
             return '?' . ($query !== '' ? $query : 'p=login&sistem=' . $sistem);
         }
-        if ($sistem === 'portal' && empty($c['portal_utama'])) { return self::url('pendidikan', 'p=portal'); }
+        if ($sistem === 'portal' && empty($c['portal_utama'])) { return self::url('pendidikan'); }
         $host = $sistem === 'portal' ? $c['domain'] : ($c['subdomain'][$sistem] ?? $sistem) . '.' . $c['domain'];
         return 'https://' . $host . '/' . ($query !== '' ? '?' . $query : '');
     }
@@ -66,7 +66,7 @@ final class Host
         if ($hostSis === 'portal') { return $page === 'portal' ? null : self::tujuan($page); }
         if ($hostSis === 'wali') { return in_array($page, Domain::HALAMAN['wali'], true) ? null : (self::milik($page) ? self::tujuan($page) : self::url('wali', 'p=cek')); }
         if (in_array($page, Domain::HALAMAN_UMUM, true) || in_array($page, Domain::HALAMAN[$hostSis], true)) { return null; }
-        if ($page === 'portal') { return $hostSis === 'pendidikan' && empty(self::cfg()['portal_utama']) ? null : self::url('portal'); }
+        if ($page === 'portal') { return empty(self::cfg()['portal_utama']) ? '?p=login&sistem=' . $hostSis : self::url('portal'); }
         return self::tujuan($page);
     }
 
