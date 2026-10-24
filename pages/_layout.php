@@ -3,7 +3,7 @@
 $cur = $_GET['p'] ?? 'dashboard';
 $alias = ['santri_form' => 'santri', 'santri_detail' => 'santri', 'santri_lengkap' => 'santri', 'kuitansi' => 'bayar', 'va_baru' => 'va', 'va_detail' => 'va', 'struk' => 'penjualan', 'gudang_item' => 'gudang', 'barang' => 'gudang'];
 $cur = $alias[$cur] ?? $cur;
-$asset = static fn(string $f): string => 'assets/' . $f . '?v=8';
+$asset = static fn(string $f): string => 'assets/' . $f . '?v=' . (@filemtime(__DIR__ . '/../assets/' . $f) ?: 8);
 $appName = $cfg['app_name'] ?? 'SPP & Data Santri';
 $showApp = $user && $public === false;
 $pendaftarN = 0;
