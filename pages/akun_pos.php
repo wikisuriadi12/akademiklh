@@ -7,6 +7,21 @@ if (is_post()) {
     try {
         $aksi = in_str('aksi');
         $uid = (int) in_str('uid');
+        if ($aksi === 'qris') {
+            Settings::set('qris_nama', mb_substr(trim(in_str('qris_nama')), 0, 80) ?: Settings::DEFAULTS['qris_nama']);
+            Settings::set('qris_nmid', mb_substr((string) preg_replace('/[^A-Za-z0-9]/', '', in_str('qris_nmid')), 0, 30));
+            $f = $_FILES['qris_gambar'] ?? null;
+            if ($f && ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                if (!is_uploaded_file((string) $f['tmp_name'])) { throw new InvalidArgumentException('Unggahan tidak valid.'); }
+                Qris::simpan($f);
+            }
+            $aktif = in_str('qris_aktif') === '1';
+            if ($aktif && Qris::url() === null) { throw new InvalidArgumentException('Unggah gambar QR dulu sebelum mengaktifkan QRIS.'); }
+            Settings::set('qris_aktif', $aktif ? '1' : '0');
+            Db::audit(Auth::id(), 'ubah', 'pengaturan', null, 'qris ' . ($aktif ? 'aktif' : 'nonaktif'));
+            flash('Pengaturan QRIS disimpan.');
+            redirect('?p=akun_pos');
+        }
         if ($aksi !== 'tambah') {
             $r = Db::val('SELECT role FROM users WHERE id = ?', [$uid]);
             if (!$r || !isset($peran[$r])) { throw new InvalidArgumentException('Akun ini tidak diatur dari halaman ini.'); }
@@ -85,5 +100,16 @@ ob_start(); ?>
     <label>Password awal (min. 10 karakter) <input type="password" name="password" required minlength="10"></label>
   </fieldset>
   <button class="btn"><?= icon('plus') ?> Tambah</button>
+</form>
+<form method="post" enctype="multipart/form-data" class="card form" autocomplete="off" style="margin-top:16px">
+  <h2>Pembayaran QRIS kasir</h2>
+  <?= csrf_field() ?><input type="hidden" name="aksi" value="qris">
+  <label class="chk full"><input type="checkbox" name="qris_aktif" value="1" <?= Settings::get('qris_aktif') === '1' ? 'checked' : '' ?>> Tampilkan QRIS sebagai metode bayar di kasir</label>
+  <label>Nama merchant <input name="qris_nama" value="<?= e(Settings::get('qris_nama')) ?>" maxlength="80"></label>
+  <label>NMID <input name="qris_nmid" value="<?= e(Settings::get('qris_nmid')) ?>" maxlength="30" placeholder="ID..."></label>
+  <label class="full">Gambar QR (JPG/PNG, maks. 3 MB) <input type="file" name="qris_gambar" accept="image/png,image/jpeg"></label>
+  <?php if (Qris::url() !== null): ?><div class="full"><small>QR saat ini:</small><br><img src="<?= e(Qris::url()) ?>" alt="QRIS" style="max-width:220px;height:auto;border-radius:8px"></div><?php endif; ?>
+  <small>QRIS statis tanpa nominal dan tanpa notifikasi otomatis. Kasir mengecek notifikasi di aplikasi merchant lalu mencentang konfirmasi sebelum menyimpan transaksi. Berlaku untuk pelanggan umum, pegawai, dan santri.</small>
+  <button class="btn" style="margin-top:12px"><?= icon('check') ?> Simpan QRIS</button>
 </form>
 <?php render('Akun LH Mart & Gudang', ob_get_clean());
