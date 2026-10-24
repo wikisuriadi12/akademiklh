@@ -267,7 +267,15 @@ code{background:var(--surface2);border:1px solid var(--line);padding:1px 6px;bor
   .auth-foto .auth-box{min-height:100vh;align-items:center}
   .auth-mobile-brand{display:flex}
 }
-/* Login sistem Koperasi & Gudang: foto LH Mart */
-.auth-foto-pos{background:#0b1f12 url(bg-lhmart.jpg) center 38%/cover no-repeat}
-.auth-foto-pos::before{background:linear-gradient(100deg,rgba(8,22,14,.9) 0%,rgba(10,30,18,.66) 45%,rgba(10,30,18,.18) 100%)}
-@media (max-width:860px){.auth-foto-pos{background-position:50% 35%}.auth-foto-pos::before{background:linear-gradient(180deg,rgba(8,22,14,.5),rgba(8,22,14,.82))}}
+/* Login LH Mart & Gudang: foto toko di sisi kiri, formulir di kanan */
+.auth.auth-foto-pos{background:var(--bg,#f5f6f4);grid-template-columns:1.1fr minmax(380px,.9fr)}
+.auth.auth-foto-pos::before{display:none}
+.auth.auth-foto-pos .auth-hero{background:linear-gradient(180deg,rgba(6,20,12,.62) 0%,rgba(6,20,12,0) 24%,rgba(6,20,12,0) 42%,rgba(6,20,12,.9) 100%),url(bg-lhmart.jpg) center 30%/cover no-repeat;text-shadow:0 1px 10px rgba(0,0,0,.55)}
+.auth.auth-foto-pos .auth-hero>div:nth-child(2){margin-top:auto;padding-top:24px}
+.auth.auth-foto-pos .auth-hero h1{font-size:2.3rem;line-height:1.12;margin:0 0 10px}
+.auth.auth-foto-pos .auth-box .card{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--line,#e5e7e4);box-shadow:var(--shadow)}
+@media (max-width:860px){
+  .auth.auth-foto-pos{grid-template-columns:1fr;background:#0b1f12 url(bg-lhmart.jpg) 50% 30%/cover no-repeat}
+  .auth.auth-foto-pos::before{display:block;background:linear-gradient(180deg,rgba(6,20,12,.35),rgba(6,20,12,.85))}
+  .auth.auth-foto-pos .auth-box .card{background:color-mix(in srgb,var(--surface) 94%,transparent)}
+}
