@@ -1,7 +1,7 @@
 <?php
 /** @var string $title @var string $content @var array $cfg @var ?array $user @var array $flash @var string $lembaga @var bool|string $public */
 $cur = $_GET['p'] ?? 'dashboard';
-$alias = ['santri_form' => 'santri', 'santri_detail' => 'santri', 'kuitansi' => 'bayar', 'va_baru' => 'va', 'va_detail' => 'va', 'struk' => 'penjualan', 'gudang_item' => 'gudang', 'barang' => 'gudang'];
+$alias = ['santri_form' => 'santri', 'santri_detail' => 'santri', 'santri_lengkap' => 'santri', 'kuitansi' => 'bayar', 'va_baru' => 'va', 'va_detail' => 'va', 'struk' => 'penjualan', 'gudang_item' => 'gudang', 'barang' => 'gudang'];
 $cur = $alias[$cur] ?? $cur;
 $asset = static fn(string $f): string => 'assets/' . $f . '?v=8';
 $appName = $cfg['app_name'] ?? 'SPP & Data Santri';
@@ -26,6 +26,7 @@ if ($showApp) {
         'Utama' => [['dashboard', 'Dashboard', 'home', true, 0]],
         'Kesantrian' => [
             ['santri', 'Data Santri', 'users', Auth::can('santri.view'), 0],
+            ['riwayat', 'Riwayat Santri', 'clipboard', Auth::can('santri.view'), 0],
             ['pendaftar', 'Pendaftar Baru', 'user-plus', Auth::can('pendaftar'), $pendaftarN],
             ['naik', 'Naik Kelas', 'trending-up', Auth::can('naik'), 0],
             ['impor', 'Impor Data', 'upload', Auth::can('impor'), 0],

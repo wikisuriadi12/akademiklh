@@ -6,6 +6,7 @@ final class Auth
     private const PERMS = [
         'santri.view' => ['admin', 'tu', 'bendahara', 'pimpinan', 'ustadz', 'pembina'],
         'santri.edit' => ['admin', 'tu'],
+        'santri.profil' => ['admin', 'tu'],
         'tarif.view' => ['admin', 'bendahara', 'pimpinan'],
         'tarif.edit' => ['admin', 'bendahara'],
         'tagihan.view' => ['admin', 'bendahara', 'pimpinan'],

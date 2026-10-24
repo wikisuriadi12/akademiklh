@@ -20,6 +20,7 @@ final class Settings
         'qris_nama' => 'LH MART MBL',
         'qris_nmid' => 'ID1026561527429',
         'qris_gambar' => '',
+        'raport_url' => '',
     ];
 
     private static ?array $cache = null;

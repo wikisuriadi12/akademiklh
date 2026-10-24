@@ -27,6 +27,9 @@ if (is_post()) {
             foreach (['nama_lembaga', 'alamat', 'telepon', 'wa_admin', 'rekening'] as $k) {
                 Settings::set($k, mb_substr(trim((string) ($_POST[$k] ?? '')), 0, $k === 'rekening' ? 400 : 200));
             }
+            $ru = trim(in_str('raport_url'));
+            Settings::set('raport_url', preg_match('#^https://[^\s]+$#i', $ru) ? mb_substr($ru, 0, 300) : '');
+            if ($ru !== '' && !preg_match('#^https://[^\s]+$#i', $ru)) { flash('Alamat aplikasi raport harus diawali https:// dan tanpa spasi; tidak disimpan.', 'err'); }
             if (trim(Settings::get('nama_lembaga')) === '') { Settings::set('nama_lembaga', Settings::DEFAULTS['nama_lembaga']); }
             Settings::set('pendaftaran_buka', in_str('pendaftaran_buka') === '1' ? '1' : '0');
             Settings::set('izin_wali', in_str('izin_wali') === '1' ? '1' : '0');
@@ -53,6 +56,7 @@ ob_start(); ?>
     <label>Telepon <input name="telepon" value="<?= e($s['telepon']) ?>"></label>
     <label>WhatsApp admin (untuk portal wali) <input name="wa_admin" value="<?= e($s['wa_admin']) ?>" inputmode="tel" placeholder="0812..."></label>
     <label class="full">Alamat <input name="alamat" value="<?= e($s['alamat']) ?>"></label>
+    <label class="full">Alamat aplikasi raport (tombol Lihat Detail Nilai di Riwayat Santri). Gunakan {nis}, {kelas}, {semester} <input name="raport_url" value="<?= e($s['raport_url']) ?>" placeholder="https://raport.contoh.com/nilai?nis={nis}&kelas={kelas}&semester={semester}"></label>
     <label class="full">Rekening pembayaran (tampil di portal wali &amp; pesan pengingat) <textarea name="rekening" rows="2" placeholder="BSI 1234567890 a.n. Yayasan Luqmanul Hakim"><?= e($s['rekening']) ?></textarea></label>
   </fieldset>
   <fieldset><legend>Pendaftaran santri baru</legend>

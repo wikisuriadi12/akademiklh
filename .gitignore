@@ -2,3 +2,4 @@ config.php
 *.log
 .DS_Store
 assets/qris/
+storage/

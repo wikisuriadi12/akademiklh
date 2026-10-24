@@ -94,8 +94,11 @@ function initials(string $name): string
     return $s;
 }
 
-function avatar(string $name, string $unit = ''): string
+function avatar(string $name, string $unit = '', ?string $foto = null, int $santriId = 0): string
 {
+    if ($santriId && ($u = Foto::url($santriId, $foto))) {
+        return '<span class="av av-foto"><img src="' . e($u) . '" alt="' . e($name) . '" loading="lazy"></span>';
+    }
     return '<span class="av ' . ($unit === 'akhwat' ? 'av-p' : 'av-l') . '">' . e(initials($name)) . '</span>';
 }
 

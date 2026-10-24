@@ -279,3 +279,19 @@ code{background:var(--surface2);border:1px solid var(--line);padding:1px 6px;bor
   .auth.auth-foto-pos::before{display:block;background:linear-gradient(180deg,rgba(6,20,12,.35),rgba(6,20,12,.85))}
   .auth.auth-foto-pos .auth-box .card{background:color-mix(in srgb,var(--surface) 94%,transparent)}
 }
+/* Login sistem Koperasi & Gudang: foto LH Mart */
+.auth-foto-pos{background:#0b1f12 url(bg-lhmart.jpg) center 38%/cover no-repeat}
+.auth-foto-pos::before{background:linear-gradient(100deg,rgba(8,22,14,.9) 0%,rgba(10,30,18,.66) 45%,rgba(10,30,18,.18) 100%)}
+@media (max-width:860px){.auth-foto-pos{background-position:50% 35%}.auth-foto-pos::before{background:linear-gradient(180deg,rgba(8,22,14,.5),rgba(8,22,14,.82))}}
+
+/* Tabel data santri lengkap (semua kolom Excel) */
+table.wide{width:max-content;min-width:100%}table.wide th,table.wide td{white-space:nowrap;padding:8px 12px;border-bottom:1px solid var(--line)}table.wide th.stk,table.wide td.stk{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}table.wide thead th.stk{background:var(--surface2);z-index:3}
+
+/* ===== Foto santri ===== */
+.av-foto{padding:0;overflow:hidden;background:var(--bg-2,#e8edf3)}
+.av-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto-form{display:flex;gap:14px;align-items:center;flex-wrap:wrap;grid-column:1/-1}
+.foto-prev{width:96px;height:120px;border-radius:10px;border:1px solid var(--line,#d6dde6);overflow:hidden;display:grid;place-items:center;background:var(--bg-2,#eef2f6);color:var(--mut);font-size:.75rem;text-align:center;flex:none}
+.foto-prev img{width:100%;height:100%;object-fit:cover}
+.foto-lg{width:120px;height:150px;border-radius:12px;object-fit:cover;border:1px solid var(--line,#d6dde6)}
+.page-h .who .av-foto{width:64px;height:80px;border-radius:12px}

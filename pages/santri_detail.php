@@ -10,13 +10,15 @@ $riwayat = $keu ? Spp::riwayatSantri($id, 15) : [];
 $totNom = 0; $totBayar = 0;
 foreach ($tagihan as $t) { $totNom += (int) $t['nominal']; $totBayar += (int) $t['dibayar']; }
 $sisa = $totNom - $totBayar;
+$pf = Auth::can('santri.profil') ? Santri::profil($id) : null;
 $lembaga = Settings::get('nama_lembaga');
 $wa = wa_link($s['hp_wali'], "Assalamu'alaikum {$s['nama_wali']}, kami dari $lembaga" . ($sisa > 0 ? '. Kami mengingatkan sisa pembayaran ananda ' . $s['nama'] . ' sebesar ' . rp($sisa) . '. Mohon konfirmasinya. Jazakumullahu khairan.' : ' terkait ananda ' . $s['nama'] . '.'));
 ob_start(); ?>
 <div class="page-h">
-  <div class="who"><?= avatar($s['nama'], $s['unit']) ?><div><h1><?= e($s['nama']) ?></h1><p><?= e($s['nis']) ?> &middot; <?= e($s['jenjang']) ?><?= $s['kelas'] ? ' / ' . e($s['kelas']) : '' ?> &middot; <?= e(Domain::UNIT[$s['unit']]) ?> &middot; <?= badge($s['status']) ?></p></div></div>
+  <div class="who"><?= avatar($s['nama'], $s['unit'], $s['foto'] ?? null, $id) ?><div><h1><?= e($s['nama']) ?></h1><p><?= e($s['nis']) ?> &middot; <?= e($s['jenjang']) ?><?= $s['kelas'] ? ' / ' . e($s['kelas']) : '' ?> &middot; <?= e(Domain::UNIT[$s['unit']]) ?> &middot; <?= badge($s['status']) ?></p></div></div>
   <div class="acts">
     <?php if (Auth::can('bayar')): ?><a class="btn" href="?p=bayar&amp;santri=<?= $id ?>"><?= icon('credit-card') ?> Bayar</a><?php endif; ?>
+    <a class="btn ghost" href="?p=riwayat&amp;id=<?= $id ?>"><?= icon('clipboard') ?> Riwayat</a>
     <?php if (Auth::can('santri.edit')): ?><a class="btn ghost" href="?p=santri_form&amp;id=<?= $id ?>"><?= icon('edit') ?> Ubah</a><?php endif; ?>
     <?php if ($wa): ?><a class="btn wa" href="<?= e($wa) ?>" target="_blank" rel="noopener"><?= icon('message') ?> WhatsApp wali</a><?php endif; ?>
   </div>
@@ -52,6 +54,33 @@ ob_start(); ?>
     </dl>
   </div>
 </div>
+
+<?php if (Auth::can('santri.profil')): $pfv = static fn(string $k) => e((string) ($pf[$k] ?? '')) ?: '-'; ?>
+<div class="grid g2" style="margin-bottom:16px">
+  <div class="card">
+    <h2>Identitas</h2>
+    <dl class="kv">
+      <dt>NISN</dt><dd><?= $pfv('nisn') ?></dd><dt>NIS (buku induk)</dt><dd><?= $pfv('nis_internal') ?></dd>
+      <dt>NIK</dt><dd><?= $pfv('nik') ?></dd><dt>No. KK</dt><dd><?= $pfv('no_kk') ?></dd>
+      <dt>Tanggal masuk</dt><dd><?= $pfv('tgl_masuk') ?></dd><dt>VA lama</dt><dd><?= $pfv('va_lama') ?></dd>
+      <dt>NPSN asal sekolah</dt><dd><?= $pfv('npsn_asal') ?></dd><dt>Alamat asal sekolah</dt><dd><?= $pfv('alamat_asal') ?></dd>
+      <dt>Saudara / anak ke</dt><dd><?= $pfv('jumlah_saudara') ?> / <?= $pfv('anak_ke') ?></dd>
+      <dt>Tahun ajaran</dt><dd><?= $pfv('tahun_ajaran') ?></dd><dt>Usia masuk</dt><dd><?= $pfv('usia_masuk') ?></dd><dt>Keterangan</dt><dd><?= $pfv('keterangan') ?></dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>Orang tua</h2>
+    <dl class="kv">
+      <dt>Ayah</dt><dd><?= $pfv('ayah_nama') ?></dd><dt>NIK ayah</dt><dd><?= $pfv('ayah_nik') ?></dd>
+      <dt>Pendidikan / pekerjaan</dt><dd><?= $pfv('ayah_pendidikan') ?> / <?= $pfv('ayah_pekerjaan') ?></dd>
+      <dt>Penghasilan</dt><dd><?= $pfv('ayah_penghasilan') ?></dd><dt>HP/WA ayah</dt><dd><?= $pfv('hp_ayah') ?></dd>
+      <dt>Ibu</dt><dd><?= $pfv('ibu_nama') ?></dd><dt>NIK ibu</dt><dd><?= $pfv('ibu_nik') ?></dd>
+      <dt>Pendidikan / pekerjaan</dt><dd><?= $pfv('ibu_pendidikan') ?> / <?= $pfv('ibu_pekerjaan') ?></dd>
+      <dt>Penghasilan</dt><dd><?= $pfv('ibu_penghasilan') ?></dd><dt>HP/WA ibu</dt><dd><?= $pfv('hp_ibu') ?></dd>
+    </dl>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php if ($keu): ?>
 <div class="card">

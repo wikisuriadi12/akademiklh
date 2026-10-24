@@ -142,6 +142,147 @@ final class Santri
         return (int) Db::val('SELECT COUNT(*) FROM santri WHERE status = ?' . ($scope ? ' AND unit = ?' : ''), $scope ? [$status, $scope] : [$status]);
     }
 
+
+    // ---------- Profil (identitas & orang tua) ----------
+
+    /** kunci => [label, jenis, panjang maks]. Jenis: angka (digit), identitas (NIK/NPSN; bisa paspor atau awalan huruf), teks, hp, tanggal, bilangan. */
+    public const PROFIL = [
+        'nisn' => ['NISN', 'angka', 20], 'nis_internal' => ['NIS (buku induk)', 'teks', 20], 'nik' => ['NIK santri', 'identitas', 30],
+        'no_kk' => ['No. KK', 'angka', 20], 'va_lama' => ['Virtual Account lama', 'angka', 30], 'tgl_masuk' => ['Tanggal masuk', 'tanggal', 10],
+        'npsn_asal' => ['NPSN asal sekolah', 'identitas', 20], 'alamat_asal' => ['Alamat asal sekolah', 'teks', 255],
+        'ayah_nama' => ['Nama ayah', 'teks', 120], 'ayah_nik' => ['NIK ayah', 'identitas', 30], 'ayah_pendidikan' => ['Pendidikan ayah', 'teks', 40],
+        'ayah_pekerjaan' => ['Pekerjaan ayah', 'teks', 80], 'ayah_penghasilan' => ['Penghasilan ayah', 'teks', 60], 'hp_ayah' => ['HP/WA ayah', 'hp', 30],
+        'ibu_nama' => ['Nama ibu', 'teks', 120], 'ibu_nik' => ['NIK ibu', 'identitas', 30], 'ibu_pendidikan' => ['Pendidikan ibu', 'teks', 40],
+        'ibu_pekerjaan' => ['Pekerjaan ibu', 'teks', 80], 'ibu_penghasilan' => ['Penghasilan ibu', 'teks', 60], 'hp_ibu' => ['HP/WA ibu', 'hp', 30],
+        'jumlah_saudara' => ['Jumlah saudara', 'bilangan', 3], 'anak_ke' => ['Anak ke', 'bilangan', 3],
+        'tahun_ajaran' => ['Tahun ajaran', 'teks', 9], 'usia_masuk' => ['Usia masuk', 'teks', 20], 'keterangan' => ['Keterangan', 'teks', 255],
+    ];
+
+    /** @return array{0: array, 1: string[]} */
+    public static function validateProfil(array $in): array
+    {
+        $c = [];
+        $e = [];
+        foreach (self::PROFIL as $k => [$label, $jenis, $maks]) {
+            $v = trim((string) ($in[$k] ?? ''));
+            if ($v === '') { $c[$k] = null; continue; }
+            if (mb_strlen($v) > $maks) { $e[] = "$label terlalu panjang (maks. $maks karakter)."; continue; }
+            if ($jenis === 'angka' && !preg_match('/^[0-9]+$/', $v)) { $e[] = "$label hanya boleh angka."; continue; }
+            if ($jenis === 'identitas' && !preg_match('/^[A-Za-z0-9 .:\\-\/]+$/', $v)) { $e[] = "$label hanya boleh huruf, angka, dan tanda . : - /"; continue; }
+            if ($jenis === 'hp' && !preg_match('/^[0-9+\-\s]{6,30}$/', $v)) { $e[] = "$label tidak valid."; continue; }
+            if ($jenis === 'tanggal' && !Domain::validDate($v)) { $e[] = "$label tidak valid."; continue; }
+            if ($jenis === 'bilangan') {
+                if (!preg_match('/^[0-9]{1,3}$/', $v)) { $e[] = "$label harus berupa angka."; continue; }
+                $v = (string) (int) $v;
+            }
+            $c[$k] = $v;
+        }
+        return [$c, $e];
+    }
+
+    public static function profil(int $id): ?array
+    {
+        return Db::one('SELECT ' . implode(', ', array_keys(self::PROFIL)) . ' FROM santri WHERE id = ?', [$id]);
+    }
+
+    /** Simpan (ganti seluruh) kolom identitas & orang tua pada baris santri. Isian kosong menjadi NULL. */
+    public static function simpanProfil(int $id, array $c): void
+    {
+        $kolom = array_keys(self::PROFIL);
+        $vals = [];
+        foreach ($kolom as $k) { $vals[] = $c[$k] ?? null; }
+        $vals[] = $id;
+        Db::exec('UPDATE santri SET ' . implode(', ', array_map(static fn($k) => "$k = ?", $kolom)) . ' WHERE id = ?', $vals);
+    }
+
+    // ---------- Tampilan/ekspor/impor dengan header Excel ----------
+
+    /** Urutan dan nama kolom persis seperti Excel DATA SISWA. */
+    public const EXCEL_HEADER = ['KLS', 'VITUAL ACCOUNT', 'NISN', 'NIS', 'NIS LOKAL', 'NIK SISWA', 'NAMA SISWA', 'TEMPAT LAHIR', 'TGL LAHIR', 'USIA MASUK', 'L/P', 'TGL MASUK', 'TAHUN AJARAN', 'ALAMAT',
+        'NPSN ASAL SEKOLAH', 'NAMA ASAL SEKOLAH', 'ALAMAT ASAL SEKOLAH', 'KK', 'AYAH', 'NIK AYAH', 'PENDIDIKAN', 'PEKERJAAN AYAH', 'PENGHASILAN', 'IBU', 'NIK IBU', 'PENDIDIKAN', 'PEKERJAAN IBU', 'PENGHASILAN',
+        'NO. WA AYAH', 'NO. WA IBU', 'JUMLAH SAUDARA', 'ANAK KE', 'KETERANGAN'];
+
+    /** Satu baris santri (gabungan santri + profil) dalam urutan EXCEL_HEADER. */
+    public static function barisExcel(array $r): array
+    {
+        $g = static fn(string $k) => (string) ($r[$k] ?? '');
+        return [$g('kelas'), $g('va_lama'), $g('nisn'), $g('nis_internal'), $g('nis'), $g('nik'), $g('nama'), $g('tempat_lahir'), $g('tanggal_lahir'), $g('usia_masuk'),
+            $r['jenis_kelamin'] === 'L' ? 'LAKI-LAKI' : 'PEREMPUAN', $g('tgl_masuk'), $g('tahun_ajaran'), $g('alamat'),
+            $g('npsn_asal'), $g('asal_sekolah'), $g('alamat_asal'), $g('no_kk'), $g('ayah_nama'), $g('ayah_nik'), $g('ayah_pendidikan'), $g('ayah_pekerjaan'), $g('ayah_penghasilan'),
+            $g('ibu_nama'), $g('ibu_nik'), $g('ibu_pendidikan'), $g('ibu_pekerjaan'), $g('ibu_penghasilan'), $g('hp_ayah'), $g('hp_ibu'), $g('jumlah_saudara'), $g('anak_ke'), $g('keterangan')];
+    }
+
+    /** @return array{0: array, 1: int} baris (santri + profil) dan total */
+    public static function daftarLengkap(array $f, ?string $scope, int $page = 1, bool $semua = false): array
+    {
+        $where = ['1=1'];
+        $p = [];
+        if (!empty($f['q'])) { $where[] = '(s.nama LIKE ? OR s.nis LIKE ? OR s.nik LIKE ? OR s.nisn LIKE ? OR s.ayah_nama LIKE ? OR s.ibu_nama LIKE ?)'; $q = '%' . $f['q'] . '%'; array_push($p, $q, $q, $q, $q, $q, $q); }
+        if (!empty($f['unit'])) { $where[] = 's.unit = ?'; $p[] = $f['unit']; }
+        if (!empty($f['jenjang'])) { $where[] = 's.jenjang = ?'; $p[] = $f['jenjang']; }
+        if (!empty($f['status'])) { $where[] = 's.status = ?'; $p[] = $f['status']; }
+        if ($scope) { $where[] = 's.unit = ?'; $p[] = $scope; }
+        $w = implode(' AND ', $where);
+        $from = 'FROM santri s';
+        $total = (int) Db::val("SELECT COUNT(*) $from WHERE $w", $p);
+        $limit = $semua ? '' : ' LIMIT ' . self::PER_HALAMAN . ' OFFSET ' . (max(1, $page) - 1) * self::PER_HALAMAN;
+        $rows = Db::all("SELECT s.* $from WHERE $w ORDER BY s.unit, s.jenjang, s.kelas, s.nama$limit", $p);
+        return [$rows, $total];
+    }
+
+    /** Ubah tanggal dd-mm-yyyy, dd/mm/yyyy, atau yyyy-mm-dd[ hh:mm:ss] menjadi yyyy-mm-dd; '' bila tidak terbaca. */
+    public static function tanggalFleksibel(string $v): string
+    {
+        $v = trim($v);
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[ T].*)?$/', $v, $m)) { return Domain::validDate("$m[1]-$m[2]-$m[3]") ? "$m[1]-$m[2]-$m[3]" : ''; }
+        if (preg_match('/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/', $v, $m)) { $d = sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]); return Domain::validDate($d) ? $d : ''; }
+        return '';
+    }
+
+    /** Jenjang dari kolom KLS Excel: TKQ; 1A-6B = Ula; 7-9 = Wustha; 10-12 = Ulya. */
+    public static function jenjangDariKls(string $kls): string
+    {
+        $k = strtoupper(trim($kls));
+        if ($k === 'TKQ') { return 'TKQ'; }
+        if (preg_match('/^[1-6][AB]?$/', $k)) { return 'Ula'; }
+        if (in_array($k, ['7', '8', '9'], true)) { return 'Wustha'; }
+        if (in_array($k, ['10', '11', '12'], true)) { return 'Ulya'; }
+        return '';
+    }
+
+    /** Petakan nama kolom ber-header Excel ke nama kolom internal. $i = urutan kemunculan kolom (PENDIDIKAN/PENGHASILAN muncul dua kali: ayah lalu ibu). */
+    public static function kolomExcel(string $h, int $kemunculan): string
+    {
+        static $map = ['kls' => 'kls', 'vitual_account' => 'va_lama', 'virtual_account' => 'va_lama', 'nisn' => 'nisn', 'nis' => 'nis_internal', 'nis_lokal' => 'nis', 'nik_siswa' => 'nik',
+            'nama_siswa' => 'nama', 'tempat_lahir' => 'tempat_lahir', 'tgl_lahir' => 'tanggal_lahir', 'usia_masuk' => 'usia_masuk', 'lp' => 'jenis_kelamin', 'tgl_masuk' => 'tgl_masuk',
+            'tahun_ajaran' => 'tahun_ajaran', 'alamat' => 'alamat', 'npsn_asal_sekolah' => 'npsn_asal', 'nama_asal_sekolah' => 'asal_sekolah', 'alamat_asal_sekolah' => 'alamat_asal',
+            'kk' => 'no_kk', 'ayah' => 'ayah_nama', 'nik_ayah' => 'ayah_nik', 'pekerjaan_ayah' => 'ayah_pekerjaan', 'ibu' => 'ibu_nama', 'nik_ibu' => 'ibu_nik', 'pekerjaan_ibu' => 'ibu_pekerjaan',
+            'no_wa_ayah' => 'hp_ayah', 'no_wa_ibu' => 'hp_ibu', 'jumlah_saudara' => 'jumlah_saudara', 'anak_ke' => 'anak_ke', 'keterangan' => 'keterangan'];
+        if ($h === 'pendidikan') { return $kemunculan === 0 ? 'ayah_pendidikan' : 'ibu_pendidikan'; }
+        if ($h === 'penghasilan') { return $kemunculan === 0 ? 'ayah_penghasilan' : 'ibu_penghasilan'; }
+        return $map[$h] ?? $h;
+    }
+
+    /** Lengkapi satu baris berformat Excel: jenjang, wali, HP wali, tahun masuk, tanggal, jenis kelamin. */
+    public static function dariExcel(array $in): array
+    {
+        foreach ($in as $k => $v) { if ($v === '-') { $in[$k] = ''; } }
+        $in['kelas'] = $in['kls'] ?? '';
+        $in['jenjang'] = self::jenjangDariKls($in['kls'] ?? '');
+        $ayah = trim((string) ($in['ayah_nama'] ?? ''));
+        $in['nama_wali'] = $ayah !== '' ? $ayah : trim((string) ($in['ibu_nama'] ?? ''));
+        $in['hubungan_wali'] = $ayah !== '' ? 'Ayah' : 'Ibu';
+        $in['hp_wali'] = trim((string) ($in['hp_ayah'] ?? '')) !== '' ? $in['hp_ayah'] : (string) ($in['hp_ibu'] ?? '');
+        $in['tanggal_lahir'] = self::tanggalFleksibel((string) ($in['tanggal_lahir'] ?? ''));
+        $in['tgl_masuk'] = self::tanggalFleksibel((string) ($in['tgl_masuk'] ?? ''));
+        $in['tahun_masuk'] = $in['tgl_masuk'] !== '' ? substr($in['tgl_masuk'], 0, 4) : (preg_match('/^(\d{4})/', (string) ($in['tahun_ajaran'] ?? ''), $m) ? $m[1] : '');
+        foreach (['hp_wali', 'hp_ayah', 'hp_ibu'] as $k) {
+            $d = preg_replace('/\D/', '', (string) ($in[$k] ?? ''));
+            if (strlen($d) < 6) { $in[$k] = ''; }
+        }
+        return $in;
+    }
+
     // ---------- Pendaftaran ----------
 
     /** Pendaftaran online (publik). Santri masuk sebagai calon menunggu verifikasi TU. */
@@ -249,7 +390,7 @@ final class Santri
     }
 
     /** Semua-atau-tidak-sama-sekali: bila ada baris bermasalah, tidak ada yang disimpan. */
-    public static function importCsv(string $path, ?string $scope, ?int $userId): array
+    public static function importCsv(string $path, ?string $scope, ?int $userId, bool $perbarui = false): array
     {
         $fh = @fopen($path, 'r');
         if (!$fh) {
@@ -264,13 +405,24 @@ final class Santri
             throw new InvalidArgumentException('Berkas kosong.');
         }
         $alias = ['jk' => 'jenis_kelamin', 'gender' => 'jenis_kelamin', 'wali' => 'nama_wali', 'hp' => 'hp_wali', 'no_hp_wali' => 'hp_wali', 'tahun' => 'tahun_masuk', 'potongan' => 'potongan_spp'];
+        // Format Excel DATA SISWA dikenali dari kolom "NAMA SISWA": header dipakai apa adanya.
+        $norm = static fn($h) => preg_replace('/[^a-z0-9_]/', '', str_replace([' ', '-'], '_', strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $h)))));
+        $modeExcel = in_array('nama_siswa', array_map($norm, $head), true);
         $cols = [];
+        $muncul = [];
         foreach ($head as $i => $h) {
+            if ($modeExcel) {
+                $n = $norm($h);
+                $muncul[$n] = $muncul[$n] ?? 0;
+                $cols[$i] = self::kolomExcel($n, $muncul[$n]++);
+                continue;
+            }
             $h = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $h)));
             $h = str_replace([' ', '-'], '_', $h);
             $cols[$i] = $alias[$h] ?? $h;
         }
-        foreach (['nama', 'jenis_kelamin', 'jenjang', 'nama_wali'] as $req) {
+        $wajib = $modeExcel ? ['nama', 'kls', 'jenis_kelamin'] : ['nama', 'jenis_kelamin', 'jenjang', 'nama_wali'];
+        foreach ($wajib as $req) {
             if (!in_array($req, $cols, true)) {
                 fclose($fh);
                 throw new InvalidArgumentException("Kolom wajib '$req' tidak ada pada baris judul.");
@@ -282,6 +434,8 @@ final class Santri
         $valid = [];
         $errors = [];
         $nisPakai = [];
+        $nisLihat = [];
+        $dobel = 0;
         $baris = 1;
         while (($r = fgetcsv($fh, 0, $d, '"', '\\')) !== false) {
             $baris++;
@@ -292,14 +446,32 @@ final class Santri
             }
             $in = [];
             foreach ($cols as $i => $name) { $in[$name] = trim((string) ($r[$i] ?? '')); }
+            if ($modeExcel) { $in = self::dariExcel($in); if (($in['nis'] ?? '') !== '') { if (isset($nisLihat[$in['nis']])) { $in['nis'] = ''; $dobel++; } else { $nisLihat[$in['nis']] = true; } } }
             $jk = strtolower($in['jenis_kelamin'] ?? '');
             $in['jenis_kelamin'] = in_array($jk, ['l', 'laki-laki', 'laki', 'pria', 'ikhwan'], true) ? 'L' : (in_array($jk, ['p', 'perempuan', 'wanita', 'akhwat'], true) ? 'P' : '');
             $in['jenjang'] = $jenjangMap[strtolower($in['jenjang'] ?? '')] ?? '';
             $in['tahun_masuk'] = ($in['tahun_masuk'] ?? '') !== '' ? $in['tahun_masuk'] : (string) date('Y');
             $in['status'] = ($in['status'] ?? '') !== '' ? strtolower($in['status']) : 'aktif';
             [$c, $e] = self::validate($in);
+            [$pf, $epf] = self::validateProfil($in);
+            $e = array_merge($e, $epf);
+            $c['_profil'] = $pf;
             if ($scope && $c['unit'] !== $scope) { $e[] = 'di luar cakupan unit akun Anda.'; }
-            if ($c['nis'] !== '') {
+            if ($perbarui) {
+                // Mode perbarui: cocokkan santri yang sudah ada (NIS, atau nama + tanggal lahir bila NIS kosong); hanya data identitas & orang tua yang diisi.
+                $cocok = null;
+                if ($c['nis'] !== '') {
+                    $cocok = Db::one('SELECT id, unit FROM santri WHERE nis = ?', [$c['nis']]);
+                } elseif ($c['tanggal_lahir'] !== '') {
+                    $kand = Db::all('SELECT id, unit FROM santri WHERE nama = ? AND tanggal_lahir = ?', [$c['nama'], $c['tanggal_lahir']]);
+                    $cocok = count($kand) === 1 ? $kand[0] : null;
+                }
+                if (!$cocok) { $e[] = 'santri ' . $c['nama'] . ' tidak ditemukan di sistem (mode perbarui tidak menambah santri baru).'; }
+                elseif ($scope && $cocok['unit'] !== $scope) { $e[] = 'di luar cakupan unit akun Anda.'; }
+                else { $c['_id'] = (int) $cocok['id']; }
+                if (!empty($c['_id']) && isset($nisPakai['id' . $c['_id']])) { $e[] = 'santri ' . $c['nama'] . ' muncul dua kali dalam berkas.'; }
+                if (!empty($c['_id'])) { $nisPakai['id' . $c['_id']] = true; }
+            } elseif ($c['nis'] !== '') {
                 if (isset($nisPakai[$c['nis']]) || Db::val('SELECT id FROM santri WHERE nis = ?', [$c['nis']])) { $e[] = 'NIS ' . $c['nis'] . ' sudah dipakai.'; }
                 $nisPakai[$c['nis']] = true;
             }
@@ -316,11 +488,16 @@ final class Santri
         if (!$valid) {
             throw new InvalidArgumentException('Tidak ada baris data.');
         }
-        Db::transaction(function () use ($valid, $userId) {
-            foreach ($valid as $c) { self::create($c, $userId, 'impor'); }
+        Db::transaction(function () use ($valid, $userId, $perbarui) {
+            foreach ($valid as $c) {
+                $pf = $c['_profil'];
+                if ($perbarui) { self::simpanProfil((int) $c['_id'], $pf); continue; }
+                unset($c['_profil']);
+                self::simpanProfil(self::create($c, $userId, 'impor'), $pf);
+            }
         });
-        Db::audit($userId, 'impor', 'santri', null, count($valid) . ' baris');
-        return ['ok' => true, 'errors' => [], 'jumlah_galat' => 0, 'count' => count($valid)];
+        Db::audit($userId, $perbarui ? 'impor-perbarui' : 'impor', 'santri', null, count($valid) . ' baris');
+        return ['ok' => true, 'errors' => [], 'jumlah_galat' => 0, 'count' => count($valid), 'nis_dobel' => $dobel, 'perbarui' => $perbarui];
     }
 
     // ---------- Portal wali ----------

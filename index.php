@@ -21,7 +21,7 @@ header('Referrer-Policy: same-origin');
 
 $routes = [
     'portal' => 'portal', 'setup' => 'setup', 'login' => 'login', 'logout' => 'logout', 'dashboard' => 'dashboard',
-    'santri' => 'santri', 'santri_form' => 'santri_form', 'santri_detail' => 'santri_detail',
+    'santri' => 'santri', 'foto' => 'foto', 'riwayat' => 'riwayat', 'dokumen' => 'dokumen', 'santri_form' => 'santri_form', 'santri_detail' => 'santri_detail',
     'pendaftar' => 'pendaftar', 'naik' => 'naik', 'impor' => 'impor',
     'tarif' => 'tarif', 'tagihan' => 'tagihan', 'bayar' => 'bayar',
     'kuitansi' => 'kuitansi', 'laporan' => 'laporan',
