@@ -267,3 +267,7 @@ code{background:var(--surface2);border:1px solid var(--line);padding:1px 6px;bor
   .auth-foto .auth-box{min-height:100vh;align-items:center}
   .auth-mobile-brand{display:flex}
 }
+/* Login sistem Koperasi & Gudang: foto LH Mart */
+.auth-foto-pos{background:#0b1f12 url(bg-lhmart.jpg) center 38%/cover no-repeat}
+.auth-foto-pos::before{background:linear-gradient(100deg,rgba(8,22,14,.9) 0%,rgba(10,30,18,.66) 45%,rgba(10,30,18,.18) 100%)}
+@media (max-width:860px){.auth-foto-pos{background-position:50% 35%}.auth-foto-pos::before{background:linear-gradient(180deg,rgba(8,22,14,.5),rgba(8,22,14,.82))}}
