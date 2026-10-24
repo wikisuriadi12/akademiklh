@@ -2,6 +2,8 @@
 $hs = Host::sistem();
 $sistem = in_array($hs, ['pendidikan', 'pos'], true) ? $hs : in_str('sistem');
 if (!isset(Domain::SISTEM[$sistem])) { redirect(Host::url('portal')); }
+// POS LH Mart & Gudang punya halaman login sendiri, terpisah dari sistem akademik.
+if ($sistem === 'pos') { require __DIR__ . '/_login_pos.php'; return; }
 $S = Domain::SISTEM[$sistem];
 if (Auth::user() && Domain::sistemBoleh($sistem, Auth::user()['role'])) {
     $_SESSION['sistem'] = $sistem;
@@ -28,12 +30,12 @@ if (is_post()) {
 }
 $lembaga = Settings::get('nama_lembaga', 'Yayasan Luqmanul Hakim');
 $foto = $sistem === 'pendidikan';
-$kelas = ['pendidikan' => ' auth-foto', 'pos' => ' auth-foto auth-foto-pos'][$sistem] ?? '';
+$kelas = ['pendidikan' => ' auth-foto'][$sistem] ?? '';
 $portalAda = !Host::aktif() || !empty(Host::cfg()['portal_utama']);
 ob_start(); ?>
 <div class="auth sys-<?= e($sistem) ?><?= $kelas ?>">
   <section class="auth-hero">
-    <div class="brand"><span class="logo" style="background:rgba(255,255,255,.18)"><?= icon($sistem === 'pos' ? 'cart' : 'book', 20) ?></span><div><b><?= e($lembaga) ?></b><small style="color:rgba(255,255,255,.8)"><?= e($S['nama']) ?></small></div></div>
+    <div class="brand"><span class="logo" style="background:rgba(255,255,255,.18)"><?= icon('book', 20) ?></span><div><b><?= e($lembaga) ?></b><small style="color:rgba(255,255,255,.8)"><?= e($S['nama']) ?></small></div></div>
     <div>
       <?php if ($foto): ?>
         <span class="auth-tag">TKQ · Ula · Wustha · Ulya</span>
@@ -52,7 +54,7 @@ ob_start(); ?>
   </section>
   <section class="auth-box">
     <div class="card">
-      <?php if ($kelas !== ''): ?><div class="auth-mobile-brand"><span class="logo"><?= icon($sistem === 'pos' ? 'cart' : 'book', 20) ?></span><div><b><?= e($lembaga) ?></b><small class="mut"><?= $foto ? 'Sistem Akademik' : e($S['nama']) ?></small></div></div><?php endif; ?>
+      <?php if ($kelas !== ''): ?><div class="auth-mobile-brand"><span class="logo"><?= icon('book', 20) ?></span><div><b><?= e($lembaga) ?></b><small class="mut"><?= $foto ? 'Sistem Akademik' : e($S['nama']) ?></small></div></div><?php endif; ?>
       <h2 class="big" style="margin-bottom:4px"><?= $foto ? 'Masuk' : 'Masuk ke ' . e($S['nama']) ?></h2>
       <p class="mut" style="margin:0 0 16px"><?= $foto ? 'Untuk admin, TU, bendahara, pimpinan, ustadz, dan pembina.' : 'Gunakan akun petugas Anda.' ?></p>
       <?php if ($err): ?><div class="note err"><?= e($err) ?></div><?php endif; ?>
