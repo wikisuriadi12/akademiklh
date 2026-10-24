@@ -12,7 +12,7 @@ final class Domain
     /** Sistem terpisah: masing-masing punya pintu masuk (login) dan menu sendiri. */
     public const SISTEM = [
         'pendidikan' => ['nama' => 'Sistem Pendidikan', 'desc' => 'Data santri, tahfidz, kehadiran, perizinan, pendaftaran, tagihan SPP, dan laporan untuk TKQ, Ula, Wustha, Ulya.', 'icon' => 'book', 'home' => 'dashboard', 'roles' => ['admin', 'tu', 'bendahara', 'pimpinan', 'ustadz', 'pembina'], 'untuk' => 'Admin, TU, Bendahara, Pimpinan, Ustadz, Pembina'],
-        'pos' => ['nama' => 'Sistem Koperasi & Gudang', 'desc' => 'Kasir koperasi pondok, dompet uang saku santri, penjualan, dan stok gudang yang terhubung otomatis.', 'icon' => 'cart', 'home' => 'pos', 'roles' => ['admin', 'kasir', 'gudang', 'bendahara', 'pimpinan'], 'untuk' => 'Kasir, Petugas gudang, Bendahara, Pimpinan, Admin'],
+        'pos' => ['nama' => 'LH Mart & Gudang', 'desc' => 'Kasir LH Mart, dompet uang saku santri, penjualan, dan stok gudang yang terhubung otomatis.', 'icon' => 'cart', 'home' => 'pos', 'roles' => ['admin', 'kasir', 'gudang', 'bendahara', 'pimpinan'], 'untuk' => 'Kasir, Petugas gudang, Bendahara, Pimpinan, Admin'],
     ];
 
     /** Halaman milik tiap sistem (dipakai untuk membatasi subdomain). */

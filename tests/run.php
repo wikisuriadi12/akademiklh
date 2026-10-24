@@ -256,8 +256,8 @@ throws('barang nonaktif tak bisa dijual', fn() => Pos::jual('ikhwan', null, [$b1
 ok('role kasir & gudang ada', isset(Domain::ROLE['kasir'], Domain::ROLE['gudang']));
 
 // ---------- sistem terpisah ----------
-ok('kasir hanya boleh masuk sistem Koperasi & Gudang', Domain::sistemBoleh('pos', 'kasir') && !Domain::sistemBoleh('pendidikan', 'kasir'));
-ok('petugas gudang masuk sistem Koperasi & Gudang, halaman awal stok', Domain::sistemBoleh('pos', 'gudang') && !Domain::sistemBoleh('pendidikan', 'gudang') && Domain::home('pos', 'gudang') === 'gudang' && Domain::home('pos', 'kasir') === 'pos');
+ok('kasir hanya boleh masuk sistem LH Mart & Gudang', Domain::sistemBoleh('pos', 'kasir') && !Domain::sistemBoleh('pendidikan', 'kasir'));
+ok('petugas gudang masuk sistem LH Mart & Gudang, halaman awal stok', Domain::sistemBoleh('pos', 'gudang') && !Domain::sistemBoleh('pendidikan', 'gudang') && Domain::home('pos', 'gudang') === 'gudang' && Domain::home('pos', 'kasir') === 'pos');
 ok('tu hanya sistem pendidikan', Domain::sistemBoleh('pendidikan', 'tu') && !Domain::sistemBoleh('pos', 'tu'));
 ok('admin boleh semua sistem', Domain::sistemBoleh('pendidikan', 'admin') && Domain::sistemBoleh('pos', 'admin'));
 ok('sistem gudang terpisah sudah digabung', !isset(Domain::SISTEM['gudang']));
