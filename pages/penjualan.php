@@ -4,7 +4,7 @@ $scope = Auth::scope();
 $dari = Domain::validDate(in_str('dari')) ? in_str('dari') : date('Y-m-01');
 $sampai = Domain::validDate(in_str('sampai')) ? in_str('sampai') : date('Y-m-d');
 $unit = $scope ?? (isset(Domain::UNIT[in_str('unit')]) ? in_str('unit') : '');
-$metode = in_array(in_str('metode'), ['tunai', 'dompet'], true) ? in_str('metode') : '';
+$metode = in_array(in_str('metode'), ['tunai', 'dompet', 'qris'], true) ? in_str('metode') : '';
 $rows = Pos::daftar(['dari' => $dari, 'sampai' => $sampai, 'unit' => $unit, 'metode' => $metode], $scope, 300);
 if (in_str('csv') === '1') {
     csv_out('penjualan-' . $dari . '-' . $sampai . '.csv', ['No struk', 'Tanggal', 'Unit', 'Santri', 'Metode', 'Total', 'Status', 'Kasir'],
@@ -25,7 +25,7 @@ ob_start(); ?>
   <form method="get" class="filters"><input type="hidden" name="p" value="penjualan">
     <input type="date" name="dari" value="<?= e($dari) ?>"><input type="date" name="sampai" value="<?= e($sampai) ?>">
     <?php if ($scope === null): ?><select name="unit"><option value="">Semua unit</option><?= options(Domain::UNIT, $unit) ?></select><?php endif; ?>
-    <select name="metode"><option value="">Semua metode</option><?= options(['tunai' => 'Tunai', 'dompet' => 'Dompet'], $metode) ?></select>
+    <select name="metode"><option value="">Semua metode</option><?= options(['tunai' => 'Tunai', 'dompet' => 'Dompet', 'qris' => 'QRIS'], $metode) ?></select>
     <button class="btn"><?= icon('search') ?> Tampilkan</button>
   </form>
   <div class="kpis" style="margin-bottom:0">
@@ -44,7 +44,7 @@ ob_start(); ?>
     <tbody>
     <?php foreach ($rows as $r): ?>
       <tr><td><b><?= e($r['no_struk']) ?></b></td><td data-label="Tanggal"><?= e($r['tanggal']) ?></td><td data-label="Unit"><?= e(Domain::UNIT[$r['unit']]) ?></td>
-        <td data-label="Santri"><?= e($r['santri_nama'] ?? '-') ?></td><td data-label="Metode"><?= $r['metode'] === 'dompet' ? 'Dompet' : 'Tunai' ?></td>
+        <td data-label="Santri"><?= e($r['santri_nama'] ?? '-') ?></td><td data-label="Metode"><?= ['tunai' => 'Tunai', 'dompet' => 'Dompet', 'qris' => 'QRIS'][$r['metode']] ?? e($r['metode']) ?></td>
         <td class="r" data-label="Total"><?= rp($r['total']) ?></td>
         <td data-label="Status"><?= $r['dibatalkan'] ? '<span class="badge b-belum">Batal</span>' : '<span class="badge b-lunas">Sah</span>' ?></td>
         <td class="r"><a class="btn sm ghost" href="?p=struk&amp;id=<?= (int) $r['id'] ?>">Struk</a></td></tr>

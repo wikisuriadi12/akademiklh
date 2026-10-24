@@ -226,6 +226,25 @@ throws('batal tanpa alasan ditolak', fn() => Pos::batalkan($pj2, '', null, null)
 Pos::batalkan($pj2, 'salah input', null, null);
 ok('batal mengembalikan stok & saldo', Pos::saldo($id1) === 20000 && Gudang::stok($b2, 'ikhwan') === 9);
 throws('batal dua kali ditolak', fn() => Pos::batalkan($pj2, 'lagi', null, null));
+
+// QRIS statis di kasir
+throws('QRIS ditolak saat belum diaktifkan', fn() => Pos::jual('ikhwan', null, [$b1 => 1], 'qris', 0, null, null));
+$tmpQr = tempnam(sys_get_temp_dir(), 'qr');
+$gd = imagecreatetruecolor(1200, 1200); imagepng($gd, $tmpQr);
+throws('unggah QRIS non-gambar ditolak', fn() => Qris::simpan(['tmp_name' => __FILE__, 'size' => 100, 'error' => 0]));
+$nmQr = Qris::simpan(['tmp_name' => $tmpQr, 'size' => (int) filesize($tmpQr), 'error' => 0]);
+ok('QRIS: gambar tersimpan & diperkecil maks 1000 px', is_file(APP_ROOT . Qris::DIR . '/' . $nmQr) && getimagesize(APP_ROOT . Qris::DIR . '/' . $nmQr)[0] === 1000);
+ok('QRIS belum aktif walau gambar ada', !Qris::aktif());
+Settings::set('qris_aktif', '1');
+ok('QRIS aktif setelah diaktifkan', Qris::aktif() && Qris::url() === 'assets/qris/' . $nmQr);
+$stokQ = Gudang::stok($b1, 'ikhwan');
+$pjq = Pos::jual('ikhwan', null, [$b1 => 2], 'qris', 0, null, null);
+$pjqr = Pos::find($pjq);
+ok('jual QRIS: metode qris, dibayar = total, stok berkurang', $pjqr['metode'] === 'qris' && (int) $pjqr['dibayar'] === (int) $pjqr['total'] && Gudang::stok($b1, 'ikhwan') === $stokQ - 2);
+Pos::batalkan($pjq, 'uji QRIS', null, null);
+ok('batal QRIS mengembalikan stok', Gudang::stok($b1, 'ikhwan') === $stokQ);
+@unlink(APP_ROOT . Qris::DIR . '/' . $nmQr); @unlink(APP_ROOT . Qris::DIR . '/.htaccess'); @rmdir(APP_ROOT . Qris::DIR); @unlink($tmpQr);
+Settings::set('qris_aktif', '0'); Settings::set('qris_gambar', '');
 ok('ringkas tidak menghitung yang batal', Pos::ringkas(date('Y-m-d'), date('Y-m-d'), 'ikhwan')['n'] === 1);
 Pos::koreksi($id1, -5000, 'ditarik wali', null, null);
 ok('koreksi saldo', Pos::saldo($id1) === 15000);

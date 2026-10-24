@@ -56,6 +56,9 @@
       tot.textContent = rp(t);
       var tunai = !met || met.value === 'tunai';
       f.querySelectorAll('[data-tunai]').forEach(function (x) { x.style.display = tunai ? '' : 'none'; });
+      var qris = !!met && met.value === 'qris';
+      f.querySelectorAll('[data-qris]').forEach(function (x) { x.style.display = qris ? '' : 'none'; });
+      f.querySelectorAll('[data-qris-total]').forEach(function (x) { x.textContent = rp(t); });
       var b = parseInt((pay && pay.value || '').replace(/\D/g, '') || '0', 10);
       kem.textContent = rp(Math.max(0, b - t));
     }

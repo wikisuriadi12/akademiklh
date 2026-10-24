@@ -85,7 +85,8 @@ final class Pos
     {
         if (!isset(Domain::UNIT[$unit])) { throw new InvalidArgumentException('Unit tidak valid.'); }
         if ($scope !== null && $scope !== $unit) { throw new InvalidArgumentException('Unit di luar cakupan akun Anda.'); }
-        if (!in_array($metode, ['tunai', 'dompet'], true)) { throw new InvalidArgumentException('Metode pembayaran tidak valid.'); }
+        if (!in_array($metode, ['tunai', 'dompet', 'qris'], true)) { throw new InvalidArgumentException('Metode pembayaran tidak valid.'); }
+        if ($metode === 'qris' && !Qris::aktif()) { throw new InvalidArgumentException('Pembayaran QRIS belum diaktifkan di Pengaturan.'); }
         $items = array_filter($items, static fn($q) => (int) $q > 0);
         if (!$items) { throw new InvalidArgumentException('Belum ada barang yang dipilih.'); }
         if ($metode === 'dompet') {

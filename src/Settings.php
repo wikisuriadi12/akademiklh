@@ -16,6 +16,10 @@ final class Settings
         'va_jam' => '72',
         'sesi_hadir' => 'Ngaji Subuh, Sekolah Pagi, Shalat Dzuhur, Ngaji Maghrib',
         'izin_wali' => '1',
+        'qris_aktif' => '0',
+        'qris_nama' => 'LH MART MBL',
+        'qris_nmid' => 'ID1026561527429',
+        'qris_gambar' => '',
     ];
 
     private static ?array $cache = null;

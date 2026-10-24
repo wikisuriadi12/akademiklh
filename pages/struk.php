@@ -30,16 +30,16 @@ ob_start(); ?>
   <?php endforeach; ?></table>
   <div class="sum">
     <div><b>Total</b><b><?= rp($p['total']) ?></b></div>
-    <div><span>Metode</span><span><?= $p['metode'] === 'dompet' ? 'Dompet santri' : 'Tunai' ?></span></div>
+    <div><span>Metode</span><span><?= ['tunai' => 'Tunai', 'dompet' => 'Dompet santri', 'qris' => 'QRIS'][$p['metode']] ?? e($p['metode']) ?></span></div>
     <?php if ($p['metode'] === 'tunai'): ?><div><span>Diterima</span><span><?= rp($p['dibayar']) ?></span></div><div><span>Kembali</span><span><?= rp($p['dibayar'] - $p['total']) ?></span></div>
-    <?php else: ?><div><span>Sisa saldo</span><span><?= rp(Pos::saldo((int) $p['santri_id'])) ?></span></div><?php endif; ?>
+    <?php elseif ($p['metode'] === 'dompet'): ?><div><span>Sisa saldo</span><span><?= rp(Pos::saldo((int) $p['santri_id'])) ?></span></div><?php endif; ?>
   </div>
   <p style="text-align:center;margin:14px 0 0"><small>Terima kasih. Barang yang sudah dibeli tidak dapat dikembalikan.</small></p>
   <?php if ($batal): ?><p class="note err" style="margin-top:12px">Dibatalkan: <?= e($p['alasan_batal']) ?></p><?php endif; ?>
 </div>
 <?php if ($bisaBatal): ?>
 <form method="post" class="card form noprint struk" data-confirm="Batalkan penjualan ini? Stok dan saldo dikembalikan."><?= csrf_field() ?>
-  <h2>Batalkan penjualan</h2><label>Alasan <input name="alasan" required placeholder="Salah input, barang dikembalikan..."></label>
+  <h2>Batalkan penjualan</h2><?php if ($p['metode'] === 'qris'): ?><p class="note">Pembayaran QRIS tidak dikembalikan otomatis. Kembalikan uang ke pembeli lewat aplikasi merchant.</p><?php endif; ?><label>Alasan <input name="alasan" required placeholder="Salah input, barang dikembalikan..."></label>
   <button class="btn danger">Batalkan</button></form>
 <?php endif; ?>
 <?php render('Struk', ob_get_clean());

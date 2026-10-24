@@ -15,6 +15,7 @@ if (is_post()) {
         $items = [];
         foreach ((array) ($_POST['qty'] ?? []) as $bid => $q) { $items[(int) $bid] = (int) $q; }
         $dibayar = (int) preg_replace('/\D/', '', in_str('dibayar', '0'));
+        if (in_str('metode') === 'qris' && in_str('qris_ok') !== '1') { throw new InvalidArgumentException('Centang konfirmasi bahwa pembayaran QRIS sudah masuk.'); }
         $id = Pos::jual($unit, $sidP ?: null, $items, in_str('metode'), $dibayar, Auth::id(), $scope);
         flash('Penjualan tersimpan.');
         redirect('?p=struk&id=' . $id);
@@ -72,10 +73,20 @@ ob_start(); ?>
     <label>Metode <select name="metode" data-metode>
       <option value="tunai">Tunai</option>
       <?php if ($santri): ?><option value="dompet">Dompet santri (saldo <?= rp($saldo) ?>)</option><?php endif; ?>
+      <?php if (Qris::aktif()): ?><option value="qris">QRIS (scan QR)</option><?php endif; ?>
     </select></label>
     <label data-tunai>Uang diterima <input name="dibayar" data-rupiah inputmode="numeric" placeholder="0"></label>
     <div data-tunai><small>Kembalian</small><br><b data-kembali>Rp 0</b></div>
     <button class="btn" <?= $barang ? '' : 'disabled' ?>><?= icon('check') ?> Bayar &amp; cetak struk</button>
   </div>
+  <?php if (Qris::aktif()): ?>
+  <div class="card" data-qris style="display:none;text-align:center">
+    <h2>Bayar dengan QRIS</h2>
+    <img src="<?= e(Qris::url()) ?>" alt="QRIS <?= e(Settings::get('qris_nama')) ?>" style="max-width:320px;width:100%;height:auto;border-radius:8px">
+    <p style="margin:8px 0 0"><b><?= e(Settings::get('qris_nama')) ?></b><?= Settings::get('qris_nmid') !== '' ? '<br><small>NMID ' . e(Settings::get('qris_nmid')) . '</small>' : '' ?></p>
+    <p style="margin:10px 0 0">Minta pembeli memasukkan nominal tepat:<br><b class="pos-total" data-qris-total>Rp 0</b></p>
+    <label class="chk" style="justify-content:center;margin-top:10px"><input type="checkbox" name="qris_ok" value="1"> Pembayaran sudah masuk (cek notifikasi aplikasi merchant)</label>
+  </div>
+  <?php endif; ?>
 </form>
 <?php render('Kasir (POS)', ob_get_clean());

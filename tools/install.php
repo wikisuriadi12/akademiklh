@@ -15,6 +15,11 @@ $pdo = Db::pdo();
 foreach (array_filter(array_map('trim', explode(';', file_get_contents(APP_ROOT . '/database/schema.sql')))) as $sql) {
     $pdo->exec($sql);
 }
+foreach (glob(APP_ROOT . '/database/migrasi-*.sql') ?: [] as $mf) {
+    foreach (array_filter(array_map('trim', explode(';', (string) file_get_contents($mf)))) as $sql) {
+        $pdo->exec($sql);
+    }
+}
 echo "Tabel siap.\n";
 
 if ((int) Db::val('SELECT COUNT(*) FROM users') > 0) { exit("Sudah ada pengguna; tidak membuat admin baru.\n"); }

@@ -10,6 +10,19 @@ if (is_post()) {
         } elseif ($aksi === 'jenis_status') {
             Spp::setJenisAktif((int) in_str('id'), in_str('aktif') === '1', Auth::id());
             flash('Status jenis biaya diperbarui.');
+        } elseif ($aksi === 'qris') {
+            Settings::set('qris_nama', mb_substr(trim(in_str('qris_nama')), 0, 80) ?: Settings::DEFAULTS['qris_nama']);
+            Settings::set('qris_nmid', mb_substr((string) preg_replace('/[^A-Za-z0-9]/', '', in_str('qris_nmid')), 0, 30));
+            $f = $_FILES['qris_gambar'] ?? null;
+            if ($f && ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                if (!is_uploaded_file((string) $f['tmp_name'])) { throw new InvalidArgumentException('Unggahan tidak valid.'); }
+                Qris::simpan($f);
+            }
+            $aktif = in_str('qris_aktif') === '1';
+            if ($aktif && Qris::url() === null) { throw new InvalidArgumentException('Unggah gambar QR dulu sebelum mengaktifkan QRIS.'); }
+            Settings::set('qris_aktif', $aktif ? '1' : '0');
+            Db::audit(Auth::id(), 'ubah', 'pengaturan', null, 'qris ' . ($aktif ? 'aktif' : 'nonaktif'));
+            flash('Pengaturan QRIS disimpan.');
         } else {
             foreach (['nama_lembaga', 'alamat', 'telepon', 'wa_admin', 'rekening'] as $k) {
                 Settings::set($k, mb_substr(trim((string) ($_POST[$k] ?? '')), 0, $k === 'rekening' ? 400 : 200));
@@ -57,6 +70,19 @@ ob_start(); ?>
     <small>Mode saat ini: <b><?= e(Bni::mode()) ?></b><?= Bni::siap() ? '' : ' (kredensial BNI belum lengkap di config.php)' ?>. Alamat callback untuk didaftarkan ke BNI: <code>https://DOMAIN-ANDA/?p=bni_callback<?= Bni::cfg()['secret_cb'] !== '' ? '&amp;k=TOKEN' : '' ?></code>. Kunci rahasia BNI hanya di <code>config.php</code>.</small>
   </fieldset>
   <button class="btn"><?= icon('check') ?> Simpan pengaturan</button>
+</form>
+
+<form method="post" enctype="multipart/form-data" class="card form">
+  <?= csrf_field() ?><input type="hidden" name="aksi" value="qris">
+  <fieldset><legend>Pembayaran QRIS kasir (koperasi)</legend>
+    <label class="chk full"><input type="checkbox" name="qris_aktif" value="1" <?= $s['qris_aktif'] === '1' ? 'checked' : '' ?>> Tampilkan QRIS sebagai metode bayar di kasir</label>
+    <label>Nama merchant <input name="qris_nama" value="<?= e($s['qris_nama']) ?>" maxlength="80"></label>
+    <label>NMID <input name="qris_nmid" value="<?= e($s['qris_nmid']) ?>" maxlength="30" placeholder="ID..."></label>
+    <label class="full">Gambar QR (JPG/PNG, maks. 3 MB) <input type="file" name="qris_gambar" accept="image/png,image/jpeg"></label>
+    <?php if (Qris::url() !== null): ?><div class="full"><small>QR saat ini:</small><br><img src="<?= e(Qris::url()) ?>" alt="QRIS" style="max-width:220px;height:auto;border-radius:8px"></div><?php endif; ?>
+    <small>QRIS statis tanpa nominal dan tanpa notifikasi otomatis. Kasir mengecek notifikasi di aplikasi merchant lalu mencentang konfirmasi sebelum menyimpan transaksi.</small>
+  </fieldset>
+  <button class="btn"><?= icon('check') ?> Simpan QRIS</button>
 </form>
 
 <div class="card">
