@@ -211,7 +211,7 @@ form.inline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0}
 .struk .sum div{display:flex;justify-content:space-between;padding:2px 0}
 
 /* ===== V3.1: portal & sistem terpisah ===== */
-body.sys-pos,.auth.sys-pos,.auth.sys-pos .auth-box{--pri:#c2410c;--pri-d:#9a3412;--pri-l:#ffe8d9;--btn:#c2410c;--btn-h:#9a3412;--chart1:#c2410c;--chart2:#f6c3a2}
+body.sys-pos,.auth.sys-pos,.auth.sys-pos .auth-box{--pri:#0a6d4e;--pri-d:#0a5a41;--pri-l:#dff0e6;--btn:#0a6d4e;--btn-h:#0a5a41;--chart1:#0a6d4e;--chart2:#b5dcc8}
 body.sys-gudang,.auth.sys-gudang,.auth.sys-gudang .auth-box{--pri:#1d4ed8;--pri-d:#1e3a8a;--pri-l:#dbe7ff;--btn:#1d4ed8;--btn-h:#1e3a8a;--chart1:#1d4ed8;--chart2:#b6c9f7}
 :root[data-theme=dark] body.sys-pos,:root[data-theme=dark] .auth.sys-pos{--pri:#fb923c;--pri-d:#fdba74;--pri-l:#3a2112;--btn:#c2410c;--btn-h:#ea580c;--chart1:#fb923c;--chart2:#6b3416}
 :root[data-theme=dark] body.sys-gudang,:root[data-theme=dark] .auth.sys-gudang{--pri:#7fa6ff;--pri-d:#a9c3ff;--pri-l:#16264a;--btn:#2f5de0;--btn-h:#4672f0;--chart1:#7fa6ff;--chart2:#25386b}

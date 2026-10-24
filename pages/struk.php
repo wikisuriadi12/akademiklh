@@ -29,6 +29,7 @@ ob_start(); ?>
     <tr><td><?= e($i['nama']) ?><br><small><?= (int) $i['qty'] ?> &times; <?= rp($i['harga']) ?></small></td><td class="r"><?= rp($i['subtotal']) ?></td></tr>
   <?php endforeach; ?></table>
   <div class="sum">
+    <?php $dk = (int) ($p['diskon'] ?? 0); if ($dk > 0): ?><div><span>Subtotal</span><span><?= rp((int) $p['total'] + $dk) ?></span></div><div><span>Diskon</span><span>&minus; <?= rp($dk) ?></span></div><?php endif; ?>
     <div><b>Total</b><b><?= rp($p['total']) ?></b></div>
     <div><span>Metode</span><span><?= ['tunai' => 'Tunai', 'dompet' => 'Dompet santri', 'qris' => 'QRIS'][$p['metode']] ?? e($p['metode']) ?></span></div>
     <?php if ($p['metode'] === 'tunai'): ?><div><span>Diterima</span><span><?= rp($p['dibayar']) ?></span></div><div><span>Kembali</span><span><?= rp($p['dibayar'] - $p['total']) ?></span></div>

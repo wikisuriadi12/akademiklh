@@ -245,6 +245,18 @@ Pos::batalkan($pjq, 'uji QRIS', null, null);
 ok('batal QRIS mengembalikan stok', Gudang::stok($b1, 'ikhwan') === $stokQ);
 @unlink(APP_ROOT . Qris::DIR . '/' . $nmQr); @unlink(APP_ROOT . Qris::DIR . '/.htaccess'); @rmdir(APP_ROOT . Qris::DIR); @unlink($tmpQr);
 Settings::set('qris_aktif', '0'); Settings::set('qris_gambar', '');
+
+// Diskon pesanan
+$stokD = Gudang::stok($b1, 'ikhwan');
+throws('diskon melebihi subtotal ditolak', fn() => Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 99999, null, null, 999999));
+throws('diskon negatif ditolak', fn() => Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 99999, null, null, -1));
+$pjd = Pos::jual('ikhwan', null, [$b1 => 2], 'tunai', 10000, null, null, 1000);
+$pjdr = Pos::find($pjd);
+ok('diskon: total = subtotal - diskon, tersimpan', (int) $pjdr['total'] === 2 * 2500 - 1000 && (int) $pjdr['diskon'] === 1000 && (int) $pjdr['dibayar'] === 10000);
+$rkD = Pos::ringkas(date('Y-m-d'), date('Y-m-d'), 'ikhwan');
+Pos::batalkan($pjd, 'uji diskon', null, null);
+ok('batal penjualan berdiskon mengembalikan stok', Gudang::stok($b1, 'ikhwan') === $stokD);
+ok('laba kotor memperhitungkan diskon', $rkD['laba'] === $rk['laba'] + (2 * 2500 - 2 * 1600 - 1000) && $rkD['omzet'] === $rk['omzet'] + (2 * 2500 - 1000));
 ok('ringkas tidak menghitung yang batal', Pos::ringkas(date('Y-m-d'), date('Y-m-d'), 'ikhwan')['n'] === 1);
 Pos::koreksi($id1, -5000, 'ditarik wali', null, null);
 ok('koreksi saldo', Pos::saldo($id1) === 15000);

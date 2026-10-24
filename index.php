@@ -28,7 +28,7 @@ $routes = [
     'pengaturan' => 'pengaturan', 'audit' => 'audit',
     'tahfidz' => 'tahfidz', 'kehadiran' => 'kehadiran', 'izin' => 'izin',
     'va' => 'va', 'va_baru' => 'va_baru', 'va_detail' => 'va_detail', 'bni_callback' => 'bni_callback',
-    'pos' => 'pos', 'struk' => 'struk', 'penjualan' => 'penjualan', 'dompet' => 'dompet',
+    'pos' => 'pos', 'pos_cari' => 'pos_cari', 'struk' => 'struk', 'penjualan' => 'penjualan', 'dompet' => 'dompet',
     'gudang' => 'gudang', 'gudang_item' => 'gudang_item', 'barang' => 'barang',
     'akun' => 'akun', 'users' => 'users',
     // halaman publik (tanpa login)

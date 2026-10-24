@@ -17,7 +17,9 @@ foreach (array_filter(array_map('trim', explode(';', file_get_contents(APP_ROOT 
 }
 foreach (glob(APP_ROOT . '/database/migrasi-*.sql') ?: [] as $mf) {
     foreach (array_filter(array_map('trim', explode(';', (string) file_get_contents($mf)))) as $sql) {
-        $pdo->exec($sql);
+        try { $pdo->exec($sql); } catch (PDOException $e) {
+            if (!str_contains($e->getMessage(), 'Duplicate column')) { throw $e; }
+        }
     }
 }
 echo "Tabel siap.\n";

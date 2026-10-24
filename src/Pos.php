@@ -81,7 +81,7 @@ final class Pos
      * Catat penjualan.
      * @param array<int,int> $items barang_id => qty
      */
-    public static function jual(string $unit, ?int $santriId, array $items, string $metode, int $dibayar, ?int $userId, ?string $scope): int
+    public static function jual(string $unit, ?int $santriId, array $items, string $metode, int $dibayar, ?int $userId, ?string $scope, int $diskon = 0): int
     {
         if (!isset(Domain::UNIT[$unit])) { throw new InvalidArgumentException('Unit tidak valid.'); }
         if ($scope !== null && $scope !== $unit) { throw new InvalidArgumentException('Unit di luar cakupan akun Anda.'); }
@@ -96,7 +96,8 @@ final class Pos
             $s = self::santriUnit($santriId, $scope);
             if ($s['unit'] !== $unit) { throw new InvalidArgumentException('Santri berada di unit lain.'); }
         }
-        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId) {
+        if ($diskon < 0) { throw new InvalidArgumentException('Diskon tidak valid.'); }
+        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId, $diskon) {
             $baris = []; $total = 0;
             foreach ($items as $bid => $qty) {
                 $b = Gudang::find((int) $bid);
@@ -105,6 +106,8 @@ final class Pos
                 $baris[] = [$b, $qty];
                 $total += $qty * (int) $b['harga_jual'];
             }
+            if ($diskon > $total) { throw new InvalidArgumentException('Diskon tidak boleh melebihi subtotal ' . rp($total) . '.'); }
+            $total -= $diskon;
             if ($metode === 'tunai') {
                 if ($dibayar < $total) { throw new InvalidArgumentException('Uang diterima (' . rp($dibayar) . ') kurang dari total ' . rp($total) . '.'); }
             } else {
@@ -114,6 +117,7 @@ final class Pos
                 ['', date('Y-m-d'), $unit, $santriId, $total, $metode, $dibayar, $userId, date('Y-m-d H:i:s')]);
             $no = 'PJ-' . date('Y') . '-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
             Db::exec('UPDATE penjualan SET no_struk = ? WHERE id = ?', [$no, $id]);
+            if ($diskon > 0) { Db::exec('UPDATE penjualan SET diskon = ? WHERE id = ?', [$diskon, $id]); }
             foreach ($baris as [$b, $qty]) {
                 Gudang::ubah((int) $b['id'], $unit, -$qty, 'jual', ['ref_id' => $id, 'catatan' => $no, 'user_id' => $userId]);
                 Db::exec('INSERT INTO penjualan_item (penjualan_id, barang_id, nama, qty, harga, harga_beli, subtotal) VALUES (?,?,?,?,?,?,?)',
@@ -122,7 +126,7 @@ final class Pos
             if ($metode === 'dompet') {
                 self::ubahSaldo((int) $santriId, -$total, 'belanja', $id, $no, $userId);
             }
-            Db::audit($userId, 'jual', 'penjualan', $id, "$no $unit $metode $total");
+            Db::audit($userId, 'jual', 'penjualan', $id, "$no $unit $metode $total" . ($diskon > 0 ? " diskon $diskon" : ''));
             return $id;
         });
     }
@@ -175,6 +179,7 @@ final class Pos
         if ($unit) { $w .= ' AND p.unit = ?'; $p[] = $unit; }
         $r = Db::one("SELECT COUNT(*) AS n, COALESCE(SUM(p.total),0) AS omzet FROM penjualan p WHERE $w", $p);
         $laba = (int) Db::val("SELECT COALESCE(SUM(i.subtotal - i.qty * i.harga_beli),0) FROM penjualan_item i JOIN penjualan p ON p.id = i.penjualan_id WHERE $w", $p);
+        try { $laba -= (int) Db::val("SELECT COALESCE(SUM(p.diskon),0) FROM penjualan p WHERE $w", $p); } catch (Throwable $e) { /* kolom diskon belum dimigrasi */ }
         return ['n' => (int) $r['n'], 'omzet' => (int) $r['omzet'], 'laba' => $laba];
     }
 
