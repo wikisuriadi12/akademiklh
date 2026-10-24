@@ -1,5 +1,5 @@
 Options -Indexes
-<FilesMatch "^(config\.php|config\.example\.php|.*\.sql|.*\.md)$">
+<FilesMatch "^(config\.php|config\.example\.php|php\.ini|\.user\.ini|.*\.sql|.*\.md|.*\.log)$">
   Require all denied
 </FilesMatch>
 RedirectMatch 403 ^/(src|pages|database|tools|tests)/
