@@ -266,7 +266,12 @@ $idBaru = Gudang::simpanBarang(['kode' => 'ZZ-GDG', 'nama' => 'Barang hanya guda
 Gudang::masuk($idBaru, Pos::GUDANG, 10, 100, '', '', null, null);
 ok('barang hanya di gudang tidak terbaca kasir', !in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
 throws('transfer ke market ditolak bila item belum ada di stok market', fn() => Gudang::transfer($idBaru, Pos::GUDANG, Pos::TOKO, 4, '', null));
-ok('daftarkan ke market', Gudang::daftarkanMarket($idBaru, null) === true && Gudang::daftarkanMarket($idBaru, null) === false && in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
+$idQ2 = Gudang::simpanBarang(['kode' => 'ZZ-Q2', 'nama' => 'Ambil Banyak', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 1, 'harga_jual' => 2, 'stok_min' => 0], null, null);
+ok('belumDiMarket memuat barang baru', in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::belumDiMarket()), true));
+ok('daftarkanBanyak', Gudang::daftarkanBanyak([$idBaru, $idQ2], null) === 2 && !in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::belumDiMarket()), true));
+Db::exec('DELETE FROM stok WHERE barang_id = ?', [$idQ2]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$idQ2]); Db::exec('DELETE FROM barang WHERE id = ?', [$idQ2]);
+Gudang::daftarkanMarket($idBaru, null);
+ok('daftarkan ke market', Gudang::daftarkanMarket($idBaru, null) === false && in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
 Gudang::transfer($idBaru, Pos::GUDANG, Pos::TOKO, 4, '', null);
 ok('barang setelah transfer terbaca kasir', in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
 Db::exec('DELETE FROM stok WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM barang WHERE id = ?', [$idBaru]);

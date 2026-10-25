@@ -178,6 +178,20 @@ final class Gudang
         return true;
     }
 
+    /** Barang master aktif yang belum diambil ke Stok Market. */
+    public static function belumDiMarket(): array
+    {
+        return Db::all('SELECT b.id, b.kode, b.nama, b.kategori, b.satuan, b.harga_jual FROM barang b WHERE b.aktif = 1 AND NOT EXISTS (SELECT 1 FROM stok s WHERE s.barang_id = b.id AND s.unit = ?) ORDER BY b.nama', [Pos::TOKO]);
+    }
+
+    /** @param int[] $ids */
+    public static function daftarkanBanyak(array $ids, ?int $userId): int
+    {
+        $n = 0;
+        foreach (array_unique(array_map('intval', $ids)) as $id) { if ($id > 0 && self::daftarkanMarket($id, $userId)) { $n++; } }
+        return $n;
+    }
+
     public static function setAktif(int $id, bool $aktif, ?int $userId): void
     {
         Db::exec('UPDATE barang SET aktif = ? WHERE id = ?', [$aktif ? 1 : 0, $id]);

@@ -11,6 +11,14 @@ if (is_post() && in_str('aksi') === 'gabung' && $edit) {
     flash($n . ' barang dipindah dari stok lama (Akhwat) ke Gudang.');
     redirect('?p=gudang&lok=gudang');
 }
+if (is_post() && in_str('aksi') === 'ambil' && $edit) {
+    csrf_check();
+    $ids = in_str('semua') === '1' ? array_column(Gudang::belumDiMarket(), 'id') : (array) ($_POST['ids'] ?? []);
+    $n = Gudang::daftarkanBanyak($ids, Auth::id());
+    flash($n > 0 ? $n . ' item diambil ke Stok Market. Isi stoknya lewat Barang masuk atau Transfer dari Gudang.' : 'Tidak ada item yang dipilih.', $n > 0 ? 'ok' : 'warn');
+    redirect('?p=gudang&lok=ikhwan');
+}
+$belum = $edit && $unit === Pos::TOKO ? Gudang::belumDiMarket() : [];
 $sisaAkhwat = (int) Db::val('SELECT COUNT(*) FROM stok WHERE unit = ? AND qty > 0', ['akhwat']);
 $onlyMarket = $unit === Pos::TOKO;
 $rows = Gudang::daftar($unit, $q, $rendah, false, $onlyMarket);
@@ -28,6 +36,17 @@ ob_start(); ?>
   <button class="btn sm" data-confirm="Pindahkan semua stok unit Akhwat ke Gudang?">Pindahkan ke Gudang</button></form></div>
 <?php endif; ?>
 <div class="tabs" style="margin-bottom:12px"><?php foreach (Pos::LOKASI as $k => $v): ?><a class="<?= $unit === $k ? 'on' : '' ?>" href="?p=gudang&amp;lok=<?= e($k) ?>">Stok <?= e($v) ?></a><?php endforeach; ?></div>
+<?php if ($belum): ?>
+<div class="card" style="margin-bottom:16px"><h2>Ambil item dari Master</h2>
+  <p class="mut" style="margin:0 0 10px">Master barang hanya satu. Centang item yang mau dijual di Market, lalu klik Ambil. Stok awalnya 0.</p>
+  <form method="post"><?= csrf_field() ?><input type="hidden" name="aksi" value="ambil">
+    <div class="scroll" style="max-height:240px;overflow:auto;margin-bottom:10px">
+    <?php foreach ($belum as $x): ?><label class="chk" style="display:block;padding:4px 0"><input type="checkbox" name="ids[]" value="<?= (int) $x['id'] ?>"> <b><?= e($x['nama']) ?></b> <small class="mut"><?= e($x['kode']) ?> &middot; <?= rp($x['harga_jual']) ?></small></label><?php endforeach; ?>
+    </div>
+    <button class="btn"><?= icon('plus') ?> Ambil yang dicentang</button>
+    <button class="btn ghost" name="semua" value="1" data-confirm="Ambil semua <?= count($belum) ?> item ke Stok Market?">Ambil semua (<?= count($belum) ?>)</button>
+  </form></div>
+<?php endif; ?>
 <div class="kpis">
   <div class="kpi"><div class="chip"><?= icon('box', 22) ?></div><div><span>Jenis barang aktif</span><b><?= (int) $jenis ?></b></div></div>
   <div class="kpi"><div class="chip c-acc"><?= icon('alert', 22) ?></div><div><span>Stok menipis / habis</span><b><?= (int) $nRendah ?></b></div></div>
