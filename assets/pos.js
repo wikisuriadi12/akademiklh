@@ -75,7 +75,7 @@
     // metode
     $$('#kp-tiles button').forEach(function (b) { b.classList.toggle('on', b.dataset.m === metode); });
     $('#kp-dompet-l').textContent = santri ? santri.nama.split(' ')[0] : 'Saldo Santri';
-    var lab = { tunai: 'Bayar Tunai', qris: 'Bayar dengan BNI QRIS', dompet: 'Bayar dengan Saldo Santri' };
+    var lab = { tunai: 'Bayar Tunai', qris: 'Bayar dengan BNI QRIS', dompet: 'Bayar dengan Saldo Santri', hutang: 'Catat sebagai Hutang' };
     $('#kp-pay-l').textContent = lab[metode];
     $('#kp-pay-a').textContent = rp(total());
     $('#kp-pay').disabled = n === 0;
@@ -200,6 +200,16 @@
       u.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !ok.disabled) { ok.click(); } });
       ok.addEventListener('click', function () { kirim({ dibayar: digits(u.value) }); });
       buka(db); u.focus();
+    } else if (metode === 'hutang') {
+      var nm0 = santri ? santri.nama : ((tipe === 'pegawai' ? ($('#in-pegawai').value || '') : '') || '').trim();
+      dbb.innerHTML = '<h3>Pembelian hutang (bon)</h3><p class="sub">Barang dibawa sekarang, dibayar nanti. Tercatat di Laporan Piutang atas nama pelanggan.</p><div class="kp-big">' + rp(t) + '</div>' +
+        '<label class="kp-fl">Nama pelanggan<input id="in-hnama" maxlength="100" placeholder="Wajib diisi" value="' + esc(nm0) + '"' + (santri ? ' readonly' : '') + '></label>' +
+        '<label class="kp-fl">Jatuh tempo (opsional)<input id="in-htempo" type="date"></label>' +
+        '<div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Batal</button><button type="button" class="kp-btn" id="bt-ok" ' + (nm0 ? '' : 'disabled') + '>Simpan sebagai hutang</button></div>';
+      var hn = $('#in-hnama', dbb), ok3 = $('#bt-ok', dbb);
+      hn.addEventListener('input', function () { ok3.disabled = !hn.value.trim(); });
+      ok3.addEventListener('click', function () { kirim({ hutang: { nama: hn.value.trim(), tempo: $('#in-htempo', dbb).value } }); });
+      buka(db); if (!nm0) { hn.focus(); }
     } else if (metode === 'qris' && qris.dinamis) {
       dbb.innerHTML = '<div class="kp-qrbox"><h3>Bayar dengan QRIS</h3><p class="sub" id="dq-sub">Membuat QR...</p><div id="dq-img"></div><div class="kp-big">' + rp(t) + '</div><p class="sub" id="dq-st">Menyiapkan pembayaran...</p></div>' +
         '<div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Batal</button>' + (qris.simulasi ? '<button type="button" class="kp-btn ghost" id="dq-sim" disabled>Simulasikan lunas</button>' : '') + '</div>';
@@ -270,6 +280,8 @@
     $('#f-santri').value = santri ? santri.id : '';
     var nm = ($('#in-pegawai').value || '').trim();
     $('#f-pelanggan').value = santri ? '' : (tipe === 'pegawai' ? 'Pegawai' + (nm ? ': ' + nm : '') : 'Umum');
+    $('#f-tempo').value = '';
+    if (x.hutang) { if (!santri) { $('#f-pelanggan').value = (tipe === 'pegawai' ? 'Pegawai' : 'Umum') + ': ' + x.hutang.nama; } $('#f-tempo').value = x.hutang.tempo || ''; }
     $('#f-dibayar').value = x.dibayar || 0;
     $('#f-qris').value = x.qris ? 1 : 0;
     $('#f-qref').value = x.ref || '';

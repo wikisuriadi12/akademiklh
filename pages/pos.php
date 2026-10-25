@@ -20,7 +20,7 @@ if (is_post()) {
             if (in_str('qris_ok') !== '1') { throw new InvalidArgumentException('Centang konfirmasi bahwa notifikasi pembayaran QRIS sudah masuk dan nominalnya sesuai.'); }
             $bukti = BuktiQris::siapkan($_FILES['bukti'] ?? null);
         }
-        $id = Pos::jual($unit, $sidP ?: null, $items, in_str('metode'), $dibayar, Auth::id(), $scope, $diskon, in_str('pelanggan'));
+        $id = Pos::jual($unit, $sidP ?: null, $items, in_str('metode'), $dibayar, Auth::id(), $scope, $diskon, in_str('pelanggan'), in_str('tempo') ?: null);
         if ($qrisRef !== '' && in_str('metode') === 'qris') { QrisApi::pakai($qrisRef, $id); }
         if ($bukti !== null) { try { BuktiQris::simpan($id, $bukti); } catch (Throwable $ex) { flash('Penjualan tersimpan, tetapi foto bukti gagal disimpan: ' . $ex->getMessage(), 'err'); redirect('?p=struk&id=' . $id); } }
         flash('Penjualan tersimpan.');
@@ -73,6 +73,7 @@ $rail = [
     ['?p=gudang&lok=ikhwan', 'Market', 'box', Auth::can('gudang.view'), false],
     ['?p=gudang&lok=gudang', 'Gudang', 'box', Auth::can('gudang.view'), false],
     ['?p=barang_masuk', 'Masuk', 'plus', Auth::can('gudang.edit'), false],
+    ['?p=piutang', 'Bon', 'receipt', Auth::can('pos') || Auth::can('laporan'), false],
     ['?p=hutang', 'Hutang', 'wallet', Auth::can('gudang.edit') || Auth::can('laporan'), false],
     ['?p=laporan_pos', 'Laporan', 'bar-chart', Auth::can('penjualan') || Auth::can('gudang.view'), false],
     ['?p=dompet', 'Santri', 'users', Auth::can('dompet'), false],
@@ -81,7 +82,7 @@ $rail = [
 ob_start(); ?>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap">
-<link rel="stylesheet" href="assets/pos.css?v=2">
+<link rel="stylesheet" href="assets/pos.css?v=3">
 <div class="kp" data-cfg="<?= e(json_encode($cfg, JSON_UNESCAPED_UNICODE)) ?>">
   <nav class="kp-rail" aria-label="Menu kasir">
     <a class="kp-logo" href="?p=pos" title="<?= e(Settings::get('nama_lembaga')) ?>">LH</a>
@@ -138,6 +139,7 @@ ob_start(); ?>
       <input type="hidden" name="dibayar" id="f-dibayar" value="0">
       <input type="hidden" name="qris_ok" id="f-qris" value="0">
       <input type="hidden" name="qris_ref" id="f-qref" value="">
+      <input type="hidden" name="tempo" id="f-tempo" value="">
       <input type="hidden" name="pelanggan" id="f-pelanggan" value="Umum">
       <input type="file" name="bukti" id="f-bukti" accept="image/*" capture="environment" hidden>
       <div id="f-items"></div>
@@ -161,6 +163,7 @@ ob_start(); ?>
         <button type="button" data-m="tunai"><?= icon('cash', 22) ?><span>Tunai</span></button>
         <button type="button" data-m="qris" <?= $qrisOn ? '' : 'disabled title="QRIS belum diaktifkan di Pengaturan"' ?>><?= icon('qr', 22) ?><span>BNI QRIS</span></button>
         <button type="button" data-m="dompet"><?= icon('wallet', 22) ?><span id="kp-dompet-l">Saldo Santri</span></button>
+        <button type="button" data-m="hutang"><?= icon('receipt', 22) ?><span>Hutang / Bon</span></button>
       </div>
       <button type="button" class="kp-pay" id="kp-pay"><span id="kp-pay-l">Bayar Tunai</span><b id="kp-pay-a">Rp 0</b></button>
     </form>
@@ -180,5 +183,5 @@ ob_start(); ?>
   <ul class="kp-sl" id="sl-hasil"></ul>
   <div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Tutup</button></div>
 </div></dialog>
-<script src="assets/pos.js?v=8" defer></script>
+<script src="assets/pos.js?v=9" defer></script>
 <?php render('Kasir', ob_get_clean(), 'bare');

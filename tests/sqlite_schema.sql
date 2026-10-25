@@ -69,3 +69,6 @@ CREATE TABLE qris_trx (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT UNIQUE, pr
 
 CREATE TABLE hutang (id INTEGER PRIMARY KEY AUTOINCREMENT, pemasok TEXT, faktur TEXT DEFAULT '', tanggal TEXT, jatuh_tempo TEXT, total INT, dibayar INT DEFAULT 0, status TEXT DEFAULT 'belum', catatan TEXT DEFAULT '', user_id INT, created_at TEXT);
 CREATE TABLE hutang_bayar (id INTEGER PRIMARY KEY AUTOINCREMENT, jenis TEXT, hutang_id INT, pemasok TEXT, jumlah INT, tanggal TEXT, catatan TEXT DEFAULT '', user_id INT, created_at TEXT);
+
+CREATE TABLE piutang (id INTEGER PRIMARY KEY AUTOINCREMENT, penjualan_id INT UNIQUE, santri_id INT, nama TEXT, total INT, dibayar INT DEFAULT 0, jatuh_tempo TEXT, status TEXT DEFAULT 'belum', created_at TEXT);
+CREATE TABLE piutang_bayar (id INTEGER PRIMARY KEY AUTOINCREMENT, piutang_id INT, jumlah INT, tanggal TEXT, catatan TEXT DEFAULT '', user_id INT, created_at TEXT);

@@ -19,7 +19,7 @@ final class Domain
     public const HALAMAN = [
         'pendidikan' => ['dashboard', 'santri', 'foto', 'riwayat', 'dokumen', 'santri_form', 'santri_detail', 'santri_lengkap', 'pendaftar', 'naik', 'impor', 'tarif', 'tagihan', 'bayar', 'kuitansi', 'laporan',
             'tahfidz', 'kehadiran', 'izin', 'va', 'va_baru', 'va_detail', 'pengaturan', 'audit', 'users', 'setup'],
-        'pos' => ['pos', 'pos_cari', 'struk', 'penjualan', 'dompet', 'gudang', 'gudang_item', 'barang', 'akun_pos', 'label', 'impor_stok', 'barang_masuk', 'laporan_pos', 'bukti_qris', 'qris_buat', 'qris_status', 'hutang'],
+        'pos' => ['pos', 'pos_cari', 'struk', 'penjualan', 'dompet', 'gudang', 'gudang_item', 'barang', 'akun_pos', 'label', 'impor_stok', 'barang_masuk', 'laporan_pos', 'bukti_qris', 'qris_buat', 'qris_status', 'hutang', 'db_cek', 'piutang'],
         'wali' => ['cek', 'daftar'],
     ];
     public const HALAMAN_UMUM = ['login', 'logout', 'akun', 'bni_callback', 'qris_callback', 'captcha'];

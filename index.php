@@ -30,7 +30,7 @@ $routes = [
     'va' => 'va', 'va_baru' => 'va_baru', 'va_detail' => 'va_detail', 'bni_callback' => 'bni_callback',
     'pos' => 'pos', 'pos_cari' => 'pos_cari', 'struk' => 'struk', 'penjualan' => 'penjualan', 'dompet' => 'dompet',
     'gudang' => 'gudang', 'gudang_item' => 'gudang_item', 'barang' => 'barang',
-    'akun' => 'akun', 'users' => 'users', 'akun_pos' => 'akun_pos', 'label' => 'label', 'impor_stok' => 'impor_stok', 'barang_masuk' => 'barang_masuk', 'bukti_qris' => 'bukti_qris', 'qris_buat' => 'qris_buat', 'hutang' => 'hutang', 'captcha' => 'captcha', 'qris_status' => 'qris_status', 'qris_callback' => 'qris_callback', 'laporan_pos' => 'laporan_pos',
+    'akun' => 'akun', 'users' => 'users', 'akun_pos' => 'akun_pos', 'label' => 'label', 'impor_stok' => 'impor_stok', 'barang_masuk' => 'barang_masuk', 'bukti_qris' => 'bukti_qris', 'qris_buat' => 'qris_buat', 'piutang' => 'piutang', 'db_cek' => 'db_cek', 'hutang' => 'hutang', 'captcha' => 'captcha', 'qris_status' => 'qris_status', 'qris_callback' => 'qris_callback', 'laporan_pos' => 'laporan_pos',
     // halaman publik (tanpa login)
     'cek' => 'cek', 'daftar' => 'daftar',
 ];
@@ -50,5 +50,9 @@ try {
 } catch (PDOException $e) {
     error_log($e->getMessage());
     http_response_code(500);
-    render('Kesalahan', '<div class="card"><h2>Kesalahan basis data</h2><p>Periksa konfigurasi dan pastikan skema database sudah diimpor.</p></div>');
+    $detail = '';
+    if (Auth::user() && Auth::can('users')) {
+        $detail = '<p><a class="btn" href="?p=db_cek">Periksa &amp; perbarui database</a></p><p class="mut"><small>Detail (hanya terlihat admin): ' . e(mb_substr($e->getMessage(), 0, 300)) . '</small></p>';
+    }
+    render('Kesalahan', '<div class="card"><h2>Kesalahan basis data</h2><p>Periksa konfigurasi dan pastikan skema database sudah diimpor.</p>' . $detail . '</div>');
 }

@@ -87,11 +87,11 @@ final class Pos
      * Catat penjualan.
      * @param array<int,int> $items barang_id => qty
      */
-    public static function jual(string $unit, ?int $santriId, array $items, string $metode, int $dibayar, ?int $userId, ?string $scope, int $diskon = 0, ?string $pelanggan = null): int
+    public static function jual(string $unit, ?int $santriId, array $items, string $metode, int $dibayar, ?int $userId, ?string $scope, int $diskon = 0, ?string $pelanggan = null, ?string $tempo = null): int
     {
         if (!isset(Domain::UNIT[$unit])) { throw new InvalidArgumentException('Unit tidak valid.'); }
         if ($scope !== null && $scope !== $unit) { throw new InvalidArgumentException('Unit di luar cakupan akun Anda.'); }
-        if (!in_array($metode, ['tunai', 'dompet', 'qris'], true)) { throw new InvalidArgumentException('Metode pembayaran tidak valid.'); }
+        if (!in_array($metode, ['tunai', 'dompet', 'qris', 'hutang'], true)) { throw new InvalidArgumentException('Metode pembayaran tidak valid.'); }
         if ($metode === 'qris' && !Qris::aktif() && !QrisApi::siap()) { throw new InvalidArgumentException('Pembayaran QRIS belum diaktifkan di Pengaturan.'); }
         $items = array_filter($items, static fn($q) => (int) $q > 0);
         if (!$items) { throw new InvalidArgumentException('Belum ada barang yang dipilih.'); }
@@ -103,8 +103,13 @@ final class Pos
         }
         if ($diskon < 0) { throw new InvalidArgumentException('Diskon tidak valid.'); }
         $pelanggan = $santriId ? null : mb_substr(trim((string) $pelanggan), 0, 80);
+        $namaHutang = '';
+        if ($metode === 'hutang') {
+            $namaHutang = Piutang::namaDari($pelanggan, $santriId ? (string) Db::val('SELECT nama FROM santri WHERE id = ?', [$santriId]) : null);
+            if ($namaHutang === '') { throw new InvalidArgumentException('Nama pelanggan wajib diisi untuk pembelian hutang.'); }
+        }
         $hargaPegawai = !$santriId && $pelanggan !== null && stripos($pelanggan, 'Pegawai') === 0;
-        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId, $diskon, $pelanggan, $hargaPegawai) {
+        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId, $diskon, $pelanggan, $hargaPegawai, $namaHutang, $tempo) {
             $baris = []; $total = 0;
             foreach ($items as $bid => $qty) {
                 $b = Gudang::find((int) $bid);
@@ -118,6 +123,8 @@ final class Pos
             $total -= $diskon;
             if ($metode === 'tunai') {
                 if ($dibayar < $total) { throw new InvalidArgumentException('Uang diterima (' . rp($dibayar) . ') kurang dari total ' . rp($total) . '.'); }
+            } elseif ($metode === 'hutang') {
+                $dibayar = 0;
             } else {
                 $dibayar = $total;
             }
@@ -143,6 +150,7 @@ final class Pos
             if ($metode === 'dompet') {
                 self::ubahSaldo((int) $santriId, -$total, 'belanja', $id, $no, $userId);
             }
+            if ($metode === 'hutang') { Piutang::buat($id, $santriId, $namaHutang, $total, $tempo); }
             Db::audit($userId, 'jual', 'penjualan', $id, "$no $unit $metode $total" . ($diskon > 0 ? " diskon $diskon" : ''));
             return $id;
         });
@@ -181,6 +189,7 @@ final class Pos
             if (!$p) { throw new InvalidArgumentException('Penjualan tidak ditemukan.'); }
             if ($scope !== null && $scope !== $p['unit']) { throw new InvalidArgumentException('Data di luar cakupan unit akun Anda.'); }
             if ((int) $p['dibatalkan']) { throw new InvalidArgumentException('Penjualan sudah dibatalkan.'); }
+            if ($p['metode'] === 'hutang') { Piutang::batalkanPenjualan($id); }
             Db::exec('UPDATE penjualan SET dibatalkan = 1, alasan_batal = ? WHERE id = ?', [mb_substr($alasan, 0, 255), $id]);
             foreach (self::items($id) as $it) {
                 Gudang::ubah((int) $it['barang_id'], $p['unit'], (int) $it['qty'], 'batal_jual', ['ref_id' => $id, 'catatan' => 'batal ' . $p['no_struk'], 'user_id' => $userId]);

@@ -84,7 +84,7 @@ body.is-pub{background:#edf3ef}
 .kp-total{display:flex;justify-content:space-between;align-items:center;height:40px;margin:12px 0 11px}
 .kp-total span{font-size:15px;font-weight:700}
 .kp-total b{font-size:36px;line-height:1.1;font-weight:800;letter-spacing:-.02em}
-.kp-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px}
 .kp-tiles button{height:68px;border-radius:14px;background:#fff;border:1.5px solid #dfe7e3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13.5px;font-weight:600;color:#4a5a53;padding:0 6px;min-width:0}
 .kp-tiles button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kp-tiles button .ic{color:#5d6d66}

@@ -2,13 +2,13 @@
 $bolehJual = Auth::can('penjualan'); $bolehStok = Auth::can('gudang.view');
 if (!$bolehJual && !$bolehStok) { Auth::require('penjualan'); }
 $tabs = [];
-if ($bolehJual) { $tabs += ['ringkasan' => 'Ringkasan', 'penjualan' => 'Transaksi', 'produk' => 'Per Produk', 'kategori' => 'Per Kategori', 'pelanggan' => 'Per Pelanggan', 'kasir' => 'Per Kasir']; }
+if ($bolehJual) { $tabs += ['ringkasan' => 'Ringkasan', 'penjualan' => 'Transaksi', 'produk' => 'Per Produk', 'kategori' => 'Per Kategori', 'pelanggan' => 'Per Pelanggan', 'hutang' => 'Pembelian Hutang', 'kasir' => 'Per Kasir']; }
 if ($bolehStok) { $tabs += ['masuk' => 'Barang Masuk', 'stok' => 'Posisi Stok', 'mutasi' => 'Mutasi Stok']; }
 $tab = isset($tabs[in_str('tab')]) ? in_str('tab') : array_key_first($tabs);
 $dari = Domain::validDate(in_str('dari')) ? in_str('dari') : date('Y-m-01');
 $sampai = Domain::validDate(in_str('sampai')) ? in_str('sampai') : date('Y-m-d');
 if ($dari > $sampai) { [$dari, $sampai] = [$sampai, $dari]; }
-$metodeNama = ['tunai' => 'Tunai', 'dompet' => 'Saldo Santri', 'qris' => 'QRIS'];
+$metodeNama = ['tunai' => 'Tunai', 'dompet' => 'Saldo Santri', 'qris' => 'QRIS', 'hutang' => 'Hutang (bon)'];
 $jenisNama = ['umum' => 'Umum', 'pegawai' => 'Pegawai', 'santri' => 'Santri'];
 $tipeNama = ['transfer_masuk' => 'Transfer masuk', 'transfer_keluar' => 'Transfer keluar', 'opname' => 'Opname / koreksi', 'keluar' => 'Keluar (rusak/hilang)'];
 $lokNama = Pos::LOKASI;
@@ -72,6 +72,20 @@ switch ($tab) {
         $mm = LaporanPos::perMetode($dari, $sampai);
         $extra = '<h3>Per metode bayar</h3><div class="scroll"><table class="rt"><thead><tr><th>Metode</th><th class="r">Transaksi</th><th class="r">Omzet</th></tr></thead><tbody>'
             . implode('', array_map(static fn($x) => '<tr><td>' . e($metodeNama[$x['metode']] ?? $x['metode']) . '</td><td class="r">' . (int) $x['n'] . '</td><td class="r">' . rp($x['omzet']) . '</td></tr>', $mm)) . ($mm ? '' : '<tr><td colspan="3" class="empty">Belum ada.</td></tr>') . '</tbody></table></div><h3 style="margin-top:12px">Per jenis pelanggan</h3>';
+        break;
+    case 'hutang':
+        $rows = Piutang::laporan($dari, $sampai);
+        $kolom = ['Tanggal' => 'tgl', 'No. struk' => 't', 'Pelanggan' => 't', 'Total bon' => 'rp', 'Dibayar' => 'rp', 'Sisa' => 'rp', 'Jatuh tempo' => 't', 'Status' => 't'];
+        $tb = 0; $td = 0; $perNama = [];
+        $stNama = ['belum' => 'Belum bayar', 'sebagian' => 'Sebagian', 'lunas' => 'Lunas'];
+        foreach ($rows as $x) {
+            $sisa = (int) $x['total'] - (int) $x['dibayar']; $tb += (int) $x['total']; $td += (int) $x['dibayar'];
+            $perNama[$x['nama']] = ($perNama[$x['nama']] ?? 0) + (int) $x['total'];
+            $baris[] = [$x['tanggal'], $x['no_struk'], $x['nama'], (int) $x['total'], (int) $x['dibayar'], $sisa, $x['jatuh_tempo'] ? date('d/m/Y', strtotime($x['jatuh_tempo'])) : '-', $stNama[$x['status']] ?? $x['status']];
+        }
+        $kpi = [['Pembelian hutang', (string) count($rows), 'receipt', ''], ['Total bon', rp($tb), 'wallet', 'c-info'], ['Sudah dibayar', rp($td), 'check', 'c-ok'], ['Sisa piutang', rp($tb - $td), 'alert', 'c-acc']];
+        arsort($perNama);
+        $extra = $perNama ? '<h3>Bon per pelanggan</h3>' . Charts::hbars(array_slice($perNama, 0, 8, true), 'rp') . '<h3 style="margin-top:12px">Rincian</h3>' : '';
         break;
     case 'kasir':
         $rows = LaporanPos::perKasir($dari, $sampai);

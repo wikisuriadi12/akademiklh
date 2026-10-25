@@ -31,8 +31,9 @@ ob_start(); ?>
   <div class="sum">
     <?php $dk = (int) ($p['diskon'] ?? 0); if ($dk > 0): ?><div><span>Subtotal</span><span><?= rp((int) $p['total'] + $dk) ?></span></div><div><span>Diskon</span><span>&minus; <?= rp($dk) ?></span></div><?php endif; ?>
     <div><b>Total</b><b><?= rp($p['total']) ?></b></div>
-    <div><span>Metode</span><span><?= ['tunai' => 'Tunai', 'dompet' => 'Dompet santri', 'qris' => 'QRIS'][$p['metode']] ?? e($p['metode']) ?></span></div>
+    <div><span>Metode</span><span><?= ['tunai' => 'Tunai', 'dompet' => 'Dompet santri', 'qris' => 'QRIS', 'hutang' => 'Hutang (bon)'][$p['metode']] ?? e($p['metode']) ?></span></div>
     <?php if ($p['metode'] === 'qris' && !empty($p['bukti_qris'])): ?><div><span>Bukti QRIS</span><span><a href="?p=bukti_qris&amp;id=<?= (int) $p['id'] ?>" target="_blank" rel="noopener">Lihat foto</a></span></div><?php endif; ?>
+    <?php if ($p['metode'] === 'hutang'): $pt = Db::one('SELECT * FROM piutang WHERE penjualan_id = ?', [(int) $p['id']]); if ($pt): ?><div><span>Dibayar / sisa hutang</span><span><?= rp($pt['dibayar']) ?> / <?= rp((int) $pt['total'] - (int) $pt['dibayar']) ?></span></div><?php endif; endif; ?>
     <?php if ($p['metode'] === 'tunai'): ?><div><span>Diterima</span><span><?= rp($p['dibayar']) ?></span></div><div><span>Kembali</span><span><?= rp($p['dibayar'] - $p['total']) ?></span></div>
     <?php elseif ($p['metode'] === 'dompet'): ?><div><span>Sisa saldo</span><span><?= rp(Pos::saldo((int) $p['santri_id'])) ?></span></div><?php endif; ?>
   </div>

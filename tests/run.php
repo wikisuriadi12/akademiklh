@@ -414,6 +414,29 @@ ok('konsinyasi diakhiri', trim((string) Gudang::find($hk2)['konsinyasi_pemasok']
 Pos::batalkan($idK, 'uji', null, null);
 foreach ([$hk1, $hk2] as $zid) { Db::exec('DELETE FROM stok WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM penjualan_item WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM barang WHERE id = ?', [$zid]); }
 Db::exec('DELETE FROM hutang'); Db::exec('DELETE FROM hutang_bayar');
+// piutang pelanggan (bon di kasir)
+throws('hutang tanpa nama ditolak', fn() => Pos::jual('ikhwan', null, [$b1 => 1], 'hutang', 0, null, null, 0, 'Umum'));
+throws('hutang tempo salah ditolak', fn() => Pos::jual('ikhwan', null, [$b1 => 1], 'hutang', 0, null, null, 0, 'Umum: Budi', 'xx'));
+$sebelumB1 = Gudang::stok($b1, Pos::TOKO);
+$idH = Pos::jual('ikhwan', null, [$b1 => 2], 'hutang', 0, null, null, 0, 'Umum: Budi Santoso', date('Y-m-d', strtotime('-2 days')));
+$pH = Db::one('SELECT * FROM piutang WHERE penjualan_id = ?', [$idH]);
+ok('hutang kasir: stok berkurang, piutang tercatat atas nama', Gudang::stok($b1, Pos::TOKO) === $sebelumB1 - 2 && $pH['nama'] === 'Budi Santoso' && (int) $pH['dibayar'] === 0 && (int) $pH['total'] === (int) Db::val('SELECT total FROM penjualan WHERE id = ?', [$idH]));
+ok('hutang kasir: dibayar 0 dan metode hutang', (int) Db::val('SELECT dibayar FROM penjualan WHERE id = ?', [$idH]) === 0 && Db::val('SELECT metode FROM penjualan WHERE id = ?', [$idH]) === 'hutang');
+$rkP = Piutang::ringkasan();
+ok('ringkasan piutang per nama + lewat tempo', $rkP['Budi Santoso']['sisa'] === (int) $pH['total'] && $rkP['Budi Santoso']['lewat'] === (int) $pH['total']);
+ok('laporan pembelian hutang memuat bon', count(Piutang::laporan(date('Y-m-d'), date('Y-m-d'))) >= 1);
+throws('bayar piutang melebihi sisa ditolak', fn() => Piutang::bayar((int) $pH['id'], (int) $pH['total'] + 1, date('Y-m-d'), '', null));
+Piutang::bayar((int) $pH['id'], 1000, date('Y-m-d'), 'cicil', null);
+ok('piutang sebagian', Db::val('SELECT status FROM piutang WHERE id = ?', [$pH['id']]) === 'sebagian' && Piutang::totalSisa() === (int) $pH['total'] - 1000);
+throws('penjualan hutang yang sudah dicicil tidak bisa dibatalkan', fn() => Pos::batalkan($idH, 'uji', null, null));
+Piutang::bayar((int) $pH['id'], (int) $pH['total'] - 1000, date('Y-m-d'), '', null);
+ok('piutang lunas', Db::val('SELECT status FROM piutang WHERE id = ?', [$pH['id']]) === 'lunas' && Piutang::ringkasan() === []);
+$idH2 = Pos::jual('ikhwan', null, [$b1 => 1], 'hutang', 0, null, null, 0, 'Pegawai: Rina');
+ok('hutang pegawai memakai harga pegawai bila ada', (int) Db::val('SELECT total FROM penjualan WHERE id = ?', [$idH2]) > 0);
+Pos::batalkan($idH2, 'uji', null, null);
+ok('batal penjualan hutang menghapus piutang dari daftar', Db::val('SELECT status FROM piutang WHERE penjualan_id = ?', [$idH2]) === 'batal' && !isset(Piutang::ringkasan()['Rina']));
+Db::exec('UPDATE piutang SET dibayar = 0 WHERE penjualan_id = ?', [$idH]); Pos::batalkan($idH, 'uji', null, null);
+Db::exec('DELETE FROM piutang_bayar'); Db::exec('DELETE FROM piutang');
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }
