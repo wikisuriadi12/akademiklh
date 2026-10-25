@@ -62,7 +62,7 @@ final class Host
     /** Boleh dibuka di host ini? Mengembalikan null bila boleh, atau URL tujuan pengalihan. */
     public static function periksa(string $page, ?string $hostSis): ?string
     {
-        if ($hostSis === null || in_array($page, ['bni_callback', 'qris_callback'], true)) { return null; }
+        if ($hostSis === null || in_array($page, ['bni_callback', 'qris_callback', 'captcha'], true)) { return null; }
         if ($hostSis === 'portal') { return $page === 'portal' ? null : self::tujuan($page); }
         if ($hostSis === 'wali') { return in_array($page, Domain::HALAMAN['wali'], true) ? null : (self::milik($page) ? self::tujuan($page) : self::url('wali', 'p=cek')); }
         if (in_array($page, Domain::HALAMAN_UMUM, true) || in_array($page, Domain::HALAMAN[$hostSis], true)) { return null; }

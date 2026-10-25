@@ -38,6 +38,7 @@ final class Auth
     public const IDLE = 7200;
 
     public static bool $ipBlocked = false;
+    public static bool $userBlocked = false;
 
     private static ?array $cache = null;
 
@@ -119,11 +120,17 @@ final class Auth
         if (self::$ipBlocked) {
             return false;
         }
+        self::$userBlocked = !RateLimit::hit('login_user', strtolower(mb_substr($username, 0, 64)), 10, 900);
+        if (self::$userBlocked) {
+            password_verify($password, password_hash('dummy', PASSWORD_DEFAULT));
+            return false;
+        }
         $u = Db::one('SELECT id, password_hash, aktif, session_version FROM users WHERE username = ?', [$username]);
         // Tetap verifikasi hash walau user tidak ada agar waktu respons seragam.
         $hash = $u['password_hash'] ?? password_hash('dummy', PASSWORD_DEFAULT);
         $ok = password_verify($password, $hash) && $u && (int) $u['aktif'] === 1;
         if (!$ok) {
+            try { Db::audit(null, 'login_gagal', 'users', null, mb_substr($username, 0, 40) . ' ip ' . RateLimit::ip()); } catch (Throwable $e) { /* audit opsional */ }
             $_SESSION['try']['n']++;
             if ($_SESSION['try']['n'] >= 5) {
                 $_SESSION['try'] = ['n' => 0, 'until' => time() + 60];

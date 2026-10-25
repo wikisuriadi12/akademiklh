@@ -22,7 +22,7 @@ final class Domain
         'pos' => ['pos', 'pos_cari', 'struk', 'penjualan', 'dompet', 'gudang', 'gudang_item', 'barang', 'akun_pos', 'label', 'impor_stok', 'barang_masuk', 'laporan_pos', 'bukti_qris', 'qris_buat', 'qris_status'],
         'wali' => ['cek', 'daftar'],
     ];
-    public const HALAMAN_UMUM = ['login', 'logout', 'akun', 'bni_callback', 'qris_callback'];
+    public const HALAMAN_UMUM = ['login', 'logout', 'akun', 'bni_callback', 'qris_callback', 'captcha'];
 
     /** Halaman awal sesuai sistem dan peran (petugas gudang langsung ke stok). */
     public static function home(string $sistem, string $role): string

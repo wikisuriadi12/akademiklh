@@ -12,7 +12,12 @@ if (Auth::user() && Domain::sistemBoleh($sistem, Auth::user()['role'])) {
 $err = '';
 if (is_post()) {
     csrf_check();
-    if (Auth::lockedSeconds() > 0) {
+    $robot = LoginGuard::cek($_POST);
+    if ($robot !== null) {
+        $err = $robot;
+    } elseif (!LoginGuard::inputWajar(in_str('username'), (string) ($_POST['password'] ?? ''))) {
+        $err = 'Username atau password salah.';
+    } elseif (Auth::lockedSeconds() > 0) {
         $err = 'Terlalu banyak percobaan. Coba lagi ' . Auth::lockedSeconds() . ' detik lagi.';
     } elseif (Auth::attempt(in_str('username'), (string) ($_POST['password'] ?? ''))) {
         if (Domain::sistemBoleh($sistem, Auth::user()['role'])) {
@@ -22,6 +27,8 @@ if (is_post()) {
         Auth::logout();
         session_start();
         $err = 'Akun ini tidak punya akses ke ' . $S['nama'] . '. Gunakan pintu masuk sistem bagian Anda.';
+    } elseif (Auth::$userBlocked) {
+        $err = 'Terlalu banyak percobaan untuk akun ini. Coba lagi 15 menit lagi atau hubungi admin.';
     } elseif (Auth::$ipBlocked) {
         $err = 'Terlalu banyak percobaan dari jaringan ini. Coba lagi beberapa menit lagi.';
     } else {
@@ -32,6 +39,8 @@ $lembaga = Settings::get('nama_lembaga', 'Yayasan Luqmanul Hakim');
 $foto = $sistem === 'pendidikan';
 $kelas = ['pendidikan' => ' auth-foto'][$sistem] ?? '';
 $portalAda = !Host::aktif() || !empty(Host::cfg()['portal_utama']);
+LoginGuard::header();
+$soal = LoginGuard::siapkan();
 ob_start(); ?>
 <div class="auth sys-<?= e($sistem) ?><?= $kelas ?>">
   <section class="auth-hero">
@@ -58,12 +67,19 @@ ob_start(); ?>
       <h2 class="big" style="margin-bottom:4px"><?= $foto ? 'Masuk' : 'Masuk ke ' . e($S['nama']) ?></h2>
       <p class="mut" style="margin:0 0 16px"><?= $foto ? 'Untuk admin, TU, bendahara, pimpinan, ustadz, dan pembina.' : 'Gunakan akun petugas Anda.' ?></p>
       <?php if ($err): ?><div class="note err"><?= e($err) ?></div><?php endif; ?>
-      <form method="post" autocomplete="off">
+      <form method="post" id="f-login">
         <?= csrf_field() ?>
-        <label>Username <input name="username" required autofocus autocapitalize="none"></label>
-        <label>Password <input type="password" name="password" required></label>
+        <label>Username <input name="username" required autofocus autocapitalize="none" maxlength="64" autocomplete="username"></label>
+        <label>Password <input type="password" name="password" required maxlength="200" autocomplete="current-password"></label>
+        <?= LoginGuard::bidang() ?>
+        <div class="captcha-box">
+          <?php if ($soal === null): ?><img src="?p=captcha&amp;v=<?= time() ?>" alt="Kode verifikasi" width="230" height="76" id="cap-img"><button type="button" class="btn ghost sm" id="cap-ulang" title="Kode baru">&#8635; Kode baru</button>
+          <?php else: ?><p style="margin:0"><b><?= e($soal) ?></b></p><?php endif; ?>
+          <label>Ketik kode di atas <input name="captcha" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" inputmode="<?= $soal === null ? 'text' : 'numeric' ?>"></label>
+        </div>
         <button class="btn" style="width:100%">Masuk <?= icon('arrow-right') ?></button>
       </form>
+      <script>(function(){var b=document.getElementById('cap-ulang'),i=document.getElementById('cap-img');if(b&&i){b.addEventListener('click',function(){i.src='?p=captcha&baru=1&v='+Date.now();var c=document.querySelector('input[name=captcha]');if(c){c.value='';c.focus();}});}})();</script>
       <p style="margin:18px 0 0;font-size:.88rem" class="mut">
         <?php if ($portalAda): ?><a href="<?= e(Host::url('portal')) ?>">&larr; Pilih sistem lain</a> &middot; <?php endif; ?>
         Wali santri? <a href="<?= e(Host::url('wali', 'p=cek')) ?>">Cek tagihan</a>

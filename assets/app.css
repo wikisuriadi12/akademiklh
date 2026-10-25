@@ -295,3 +295,7 @@ table.wide{width:max-content;min-width:100%}table.wide th,table.wide td{white-sp
 .foto-prev img{width:100%;height:100%;object-fit:cover}
 .foto-lg{width:120px;height:150px;border-radius:12px;object-fit:cover;border:1px solid var(--line,#d6dde6)}
 .page-h .who .av-foto{width:64px;height:80px;border-radius:12px}
+
+/* login: CAPTCHA */
+.captcha-box{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px;padding:10px;border:1px solid var(--line,#d9e2dc);border-radius:12px;background:rgba(127,127,127,.05)}
+.captcha-box img{max-width:100%;height:auto;border-radius:8px;align-self:flex-start}

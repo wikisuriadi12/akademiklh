@@ -358,6 +358,27 @@ ok('laporan per hari memuat hari ini', LaporanPos::perHari($lp0, $lp0)[$lp0]['n'
 ok('laporan stok dan mutasi bisa dibaca', is_array(LaporanPos::stok(Pos::TOKO)) && is_array(LaporanPos::stok(Pos::GUDANG, 'habis')) && is_array(LaporanPos::mutasi($lp0, $lp0)) && is_array(LaporanPos::tidakLaku($lp0, $lp0)));
 Pos::batalkan($idL1, 'uji', null, null); Pos::batalkan($idL2, 'uji', null, null);
 ok('transaksi batal tidak dihitung di omzet', LaporanPos::ringkasan($lp0, $lp0)['n'] === $rk['n'] - 2 && LaporanPos::ringkasan($lp0, $lp0)['batal_n'] >= 2);
+// pengaman login
+$_SESSION = [];
+LoginGuard::siapkan(); $kd = (string) ($_SESSION['lg_kode'] ?? '');
+ok('captcha menyiapkan kode 5 karakter tanpa karakter membingungkan', strlen($kd) === 5 && !preg_match('/[01OIl]/', $kd));
+ok('login terlalu cepat ditolak', LoginGuard::cek(['captcha' => $kd]) !== null);
+$_SESSION = []; LoginGuard::siapkan(); $kd = (string) ($_SESSION['lg_kode'] ?? ''); $_SESSION['lg_t'] = time() - 10;
+ok('honeypot terisi ditolak', LoginGuard::cek(['captcha' => $kd, 'website' => 'http://spam']) !== null);
+$_SESSION = []; LoginGuard::siapkan(); $kd = (string) ($_SESSION['lg_kode'] ?? ''); $_SESSION['lg_t'] = time() - 10;
+ok('captcha salah ditolak', LoginGuard::cek(['captcha' => 'SALAH']) !== null);
+$_SESSION = []; LoginGuard::siapkan(); $kd = (string) ($_SESSION['lg_kode'] ?? ''); $_SESSION['lg_t'] = time() - 10;
+ok('captcha benar lolos (huruf kecil & spasi diabaikan)', LoginGuard::cek(['captcha' => ' ' . strtolower($kd) . ' ']) === null);
+ok('captcha sekali pakai (replay ditolak)', LoginGuard::cek(['captcha' => $kd]) !== null);
+$_SESSION = []; LoginGuard::siapkan(); $_SESSION['lg_t'] = time() - 10; $_SESSION['lg_c']['exp'] = time() - 1;
+ok('captcha kedaluwarsa ditolak', LoginGuard::cek(['captcha' => (string) ($_SESSION['lg_kode'] ?? 'X')]) !== null);
+ok('input login tak wajar ditolak', !LoginGuard::inputWajar('', 'x') && !LoginGuard::inputWajar('u', str_repeat('a', 500)) && !LoginGuard::inputWajar(str_repeat('u', 100), 'x') && LoginGuard::inputWajar('admin', 'rahasia'));
+if (LoginGuard::gdTersedia()) {
+    $_SESSION = ['lg_kode' => 'AB7K2'];
+    ob_start(); LoginGuard::gambar(); $png = (string) ob_get_clean();
+    ok('captcha gambar PNG valid', strncmp($png, "\x89PNG", 4) === 0);
+}
+$_SESSION = [];
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }
