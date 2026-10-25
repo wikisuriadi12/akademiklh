@@ -131,8 +131,14 @@ final class Pos
             }
             foreach ($baris as [$b, $qty]) {
                 Gudang::ubah((int) $b['id'], $unit, -$qty, 'jual', ['ref_id' => $id, 'catatan' => $no, 'user_id' => $userId]);
-                Db::exec('INSERT INTO penjualan_item (penjualan_id, barang_id, nama, qty, harga, harga_beli, subtotal) VALUES (?,?,?,?,?,?,?)',
-                    [$id, $b['id'], $b['nama'], $qty, $b['harga_pakai'], $b['harga_beli'], $qty * $b['harga_pakai']]);
+                $kons = trim((string) ($b['konsinyasi_pemasok'] ?? ''));
+                if ($kons !== '') {
+                    Db::exec('INSERT INTO penjualan_item (penjualan_id, barang_id, nama, qty, harga, harga_beli, subtotal, konsinyasi) VALUES (?,?,?,?,?,?,?,?)',
+                        [$id, $b['id'], $b['nama'], $qty, $b['harga_pakai'], $b['harga_beli'], $qty * $b['harga_pakai'], $kons]);
+                } else {
+                    Db::exec('INSERT INTO penjualan_item (penjualan_id, barang_id, nama, qty, harga, harga_beli, subtotal) VALUES (?,?,?,?,?,?,?)',
+                        [$id, $b['id'], $b['nama'], $qty, $b['harga_pakai'], $b['harga_beli'], $qty * $b['harga_pakai']]);
+                }
             }
             if ($metode === 'dompet') {
                 self::ubahSaldo((int) $santriId, -$total, 'belanja', $id, $no, $userId);

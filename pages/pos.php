@@ -73,6 +73,7 @@ $rail = [
     ['?p=gudang&lok=ikhwan', 'Market', 'box', Auth::can('gudang.view'), false],
     ['?p=gudang&lok=gudang', 'Gudang', 'box', Auth::can('gudang.view'), false],
     ['?p=barang_masuk', 'Masuk', 'plus', Auth::can('gudang.edit'), false],
+    ['?p=hutang', 'Hutang', 'wallet', Auth::can('gudang.edit') || Auth::can('laporan'), false],
     ['?p=laporan_pos', 'Laporan', 'bar-chart', Auth::can('penjualan') || Auth::can('gudang.view'), false],
     ['?p=dompet', 'Santri', 'users', Auth::can('dompet'), false],
     ['?p=akun_pos', 'Akun', 'shield', Auth::can('users'), false],

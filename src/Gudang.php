@@ -182,8 +182,9 @@ final class Gudang
     }
 
     /** Catat barang masuk dari beberapa item sekaligus (satu pemasok), all-or-nothing. @param array<int,array{0:int,1:int,2:int}> $baris [barang_id, qty, harga_beli] */
-    public static function masukBanyak(string $unit, string $pemasok, string $catatan, array $baris, ?int $userId): int
+    public static function masukBanyak(string $unit, string $pemasok, string $catatan, array $baris, ?int $userId, string $jenis = 'tunai', ?string $jatuhTempo = null, string $faktur = ''): int
     {
+        if (!in_array($jenis, ['tunai', 'hutang', 'konsinyasi'], true)) { throw new InvalidArgumentException('Jenis pembelian tidak valid.'); }
         self::cekUnit($unit, null);
         $pemasok = trim($pemasok);
         if ($pemasok === '') { throw new InvalidArgumentException('Nama supplier wajib diisi.'); }
@@ -193,13 +194,33 @@ final class Gudang
             if ((int) $b[0] <= 0 || !self::find((int) $b[0])) { throw new InvalidArgumentException('Baris ' . ($i + 1) . ': pilih barang.'); }
             if ((int) $b[1] < 1 || (int) $b[1] > 1000000) { throw new InvalidArgumentException('Baris ' . ($i + 1) . ': jumlah harus 1 atau lebih.'); }
         }
-        Db::transaction(function () use ($unit, $pemasok, $catatan, $baris, $userId) {
+        if ($jenis !== 'tunai') {
+            foreach ($baris as $i => $b) { if ((int) $b[2] < 1) { throw new InvalidArgumentException('Baris ' . ($i + 1) . ': harga beli wajib diisi untuk pembelian ' . ($jenis === 'hutang' ? 'hutang' : 'konsinyasi (harga setor ke supplier)') . '.'); } }
+        }
+        if ($jatuhTempo !== null && $jatuhTempo !== '' && !Domain::validDate($jatuhTempo)) { throw new InvalidArgumentException('Tanggal jatuh tempo tidak valid.'); }
+        $pemasok = mb_substr($pemasok, 0, 100);
+        if ($jenis === 'konsinyasi') {
+            foreach ($baris as $i => $b) {
+                $br = self::find((int) $b[0]);
+                $ks = trim((string) ($br['konsinyasi_pemasok'] ?? ''));
+                if ($ks !== '' && $ks !== $pemasok) { throw new InvalidArgumentException('Baris ' . ($i + 1) . ': ' . $br['nama'] . ' sudah menjadi barang konsinyasi dari ' . $ks . '.'); }
+                if ($ks === '' && (self::stok((int) $br['id'], Pos::GUDANG) + self::stok((int) $br['id'], Pos::TOKO)) > 0) { throw new InvalidArgumentException('Baris ' . ($i + 1) . ': ' . $br['nama'] . ' masih punya stok milik sendiri, tidak bisa dijadikan konsinyasi. Pakai barang/kode terpisah.'); }
+            }
+        }
+        Db::transaction(function () use ($unit, $pemasok, $catatan, $baris, $userId, $jenis, $jatuhTempo, $faktur) {
+            $hid = null;
+            if ($jenis === 'hutang') {
+                $tot = 0; foreach ($baris as $b) { $tot += (int) $b[1] * (int) $b[2]; }
+                $hid = Db::insert('INSERT INTO hutang (pemasok, faktur, tanggal, jatuh_tempo, total, dibayar, status, catatan, user_id, created_at) VALUES (?,?,?,?,?,0,?,?,?,?)',
+                    [$pemasok, mb_substr($faktur, 0, 60), date('Y-m-d'), ($jatuhTempo ?: null), $tot, 'belum', mb_substr($catatan, 0, 255), $userId, date('Y-m-d H:i:s')]);
+            }
             foreach ($baris as $b) {
                 [$id, $qty, $hb] = [(int) $b[0], (int) $b[1], (int) $b[2]];
-                self::ubah($id, $unit, $qty, 'masuk', ['harga_beli' => $hb, 'pemasok' => mb_substr($pemasok, 0, 100), 'catatan' => $catatan, 'user_id' => $userId]);
+                self::ubah($id, $unit, $qty, 'masuk', ['harga_beli' => $hb, 'pemasok' => $pemasok, 'catatan' => ($jenis === 'konsinyasi' ? '[Konsinyasi] ' : '') . $catatan, 'user_id' => $userId, 'ref_id' => $hid]);
                 if ($hb > 0) { Db::exec('UPDATE barang SET harga_beli = ? WHERE id = ?', [$hb, $id]); }
+                if ($jenis === 'konsinyasi') { Db::exec('UPDATE barang SET konsinyasi_pemasok = ? WHERE id = ?', [$pemasok, $id]); }
             }
-            Db::audit($userId, 'masuk', 'stok', null, "$unit " . count($baris) . ' item dari ' . $pemasok);
+            Db::audit($userId, 'masuk', 'stok', null, "$unit " . count($baris) . ' item dari ' . $pemasok . ' (' . $jenis . ')');
         });
         return count($baris);
     }

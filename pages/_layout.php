@@ -51,6 +51,7 @@ if ($showApp) {
             ['dompet', 'Dompet Santri', 'wallet', Auth::can('dompet'), 0],
             ['gudang', 'Stok Gudang & Market', 'box', Auth::can('gudang.view'), $rendahN],
             ['barang_masuk', 'Barang Masuk', 'plus', Auth::can('gudang.edit'), 0],
+            ['hutang', 'Hutang Supplier', 'wallet', Auth::can('gudang.edit') || Auth::can('laporan'), 0],
             ['laporan_pos', 'Laporan LH Mart', 'bar-chart', Auth::can('penjualan'), 0],
             ['impor_stok', 'Impor Barang & Stok', 'upload', Auth::can('gudang.edit'), 0],
             ['label', 'Cetak Label', 'tag', Auth::can('gudang.view'), 0],

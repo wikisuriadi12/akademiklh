@@ -379,6 +379,41 @@ if (LoginGuard::gdTersedia()) {
     ok('captcha gambar PNG valid', strncmp($png, "\x89PNG", 4) === 0);
 }
 $_SESSION = [];
+// hutang & konsinyasi
+$hk1 = Gudang::simpanBarang(['kode' => 'HK-1', 'nama' => 'Beli Hutang', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 0, 'harga_jual' => 3000, 'stok_min' => 0], null, null);
+$hk2 = Gudang::simpanBarang(['kode' => 'HK-2', 'nama' => 'Titipan Roti', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 0, 'harga_jual' => 5000, 'stok_min' => 0], null, null);
+throws('hutang tanpa harga beli ditolak', fn() => Gudang::masukBanyak(Pos::GUDANG, 'CV Hutang', '', [[$hk1, 10, 0]], null, 'hutang'));
+throws('jatuh tempo salah ditolak', fn() => Gudang::masukBanyak(Pos::GUDANG, 'CV Hutang', '', [[$hk1, 10, 1000]], null, 'hutang', 'bukan-tanggal'));
+Gudang::masukBanyak(Pos::GUDANG, 'CV Hutang', '', [[$hk1, 10, 2000]], null, 'hutang', date('Y-m-d', strtotime('-1 day')), 'F-001');
+$rkH = Hutang::ringkasan();
+ok('hutang tercatat per nama supplier', ($rkH['CV Hutang']['faktur_sisa'] ?? 0) === 20000 && $rkH['CV Hutang']['lewat'] === 20000 && Gudang::stok($hk1, Pos::GUDANG) === 10);
+$fH = Hutang::faktur('CV Hutang'); $hid = (int) $fH[0]['id'];
+ok('item faktur hutang terlacak', count(Hutang::itemFaktur($hid)) === 1 && (int) Hutang::itemFaktur($hid)[0]['qty'] === 10);
+throws('bayar hutang melebihi sisa ditolak', fn() => Hutang::bayar('hutang', 'CV Hutang', $hid, 25000, date('Y-m-d'), '', null));
+Hutang::bayar('hutang', 'CV Hutang', $hid, 5000, date('Y-m-d'), 'cicil', null);
+ok('hutang sebagian', Hutang::faktur('CV Hutang')[0]['status'] === 'sebagian' && Hutang::ringkasan()['CV Hutang']['faktur_sisa'] === 15000);
+Hutang::bayar('hutang', 'CV Hutang', $hid, 15000, date('Y-m-d'), '', null);
+ok('hutang lunas dan hilang dari belum lunas', Hutang::faktur('CV Hutang', 'belum') === [] && Hutang::totalHutang() === 0);
+// konsinyasi
+throws('konsinyasi tanpa harga setor ditolak', fn() => Gudang::masukBanyak(Pos::TOKO, 'Bu Roti', '', [[$hk2, 6, 0]], null, 'konsinyasi'));
+Gudang::masukBanyak(Pos::TOKO, 'Bu Roti', '', [[$hk2, 6, 3500]], null, 'konsinyasi');
+ok('konsinyasi: stok masuk, belum ada hutang', Gudang::stok($hk2, Pos::TOKO) === 6 && (Hutang::ringkasan()['Bu Roti']['kons_sisa'] ?? 0) === 0 && (int) Db::val("SELECT COUNT(*) FROM hutang WHERE pemasok = 'Bu Roti'") === 0);
+throws('konsinyasi supplier lain ditolak', fn() => Gudang::masukBanyak(Pos::TOKO, 'Pak Kue', '', [[$hk2, 1, 3000]], null, 'konsinyasi'));
+$idK = Pos::jual('ikhwan', null, [$hk2 => 4], 'tunai', 1000000, null, null, 0, 'Umum');
+ok('konsinyasi: terutang sesuai terjual x harga setor', Hutang::konsinyasi('Bu Roti')['sisa'] === 14000 && Hutang::barangKonsinyasi('Bu Roti')[0]['terjual_qty'] === 4);
+Pos::batalkan($idK, 'uji', null, null);
+ok('penjualan batal tidak jadi hutang konsinyasi', Hutang::konsinyasi('Bu Roti')['sisa'] === 0);
+$idK = Pos::jual('ikhwan', null, [$hk2 => 4], 'tunai', 1000000, null, null, 0, 'Umum');
+throws('bayar konsinyasi melebihi terjual ditolak', fn() => Hutang::bayar('konsinyasi', 'Bu Roti', null, 15000, date('Y-m-d'), '', null));
+Hutang::bayar('konsinyasi', 'Bu Roti', null, 10000, date('Y-m-d'), '', null);
+ok('konsinyasi dibayar sebagian', Hutang::konsinyasi('Bu Roti')['sisa'] === 4000 && Hutang::ringkasan()['Bu Roti']['total_sisa'] === 4000);
+throws('akhiri konsinyasi saat stok masih ada ditolak', fn() => Hutang::akhiriKonsinyasi($hk2, null));
+Gudang::keluar($hk2, Pos::TOKO, 2, 'retur ke supplier', null, null);
+Hutang::akhiriKonsinyasi($hk2, null);
+ok('konsinyasi diakhiri', trim((string) Gudang::find($hk2)['konsinyasi_pemasok']) === '');
+Pos::batalkan($idK, 'uji', null, null);
+foreach ([$hk1, $hk2] as $zid) { Db::exec('DELETE FROM stok WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM penjualan_item WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM barang WHERE id = ?', [$zid]); }
+Db::exec('DELETE FROM hutang'); Db::exec('DELETE FROM hutang_bayar');
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }

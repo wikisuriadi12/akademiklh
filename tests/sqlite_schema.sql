@@ -9,13 +9,13 @@ CREATE TABLE settings (k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE rate_limit (k TEXT PRIMARY KEY, n INT, started INT);
 CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INT, aksi TEXT, objek TEXT, objek_id INT, detail TEXT, created_at TEXT);
 
-CREATE TABLE barang (id INTEGER PRIMARY KEY AUTOINCREMENT, harga_pegawai INT, kode TEXT UNIQUE, nama TEXT, kategori TEXT DEFAULT '', satuan TEXT DEFAULT 'pcs', harga_beli INT DEFAULT 0, harga_jual INT DEFAULT 0, stok_min INT DEFAULT 0, aktif INT DEFAULT 1, created_at TEXT);
+CREATE TABLE barang (id INTEGER PRIMARY KEY AUTOINCREMENT, konsinyasi_pemasok TEXT, harga_pegawai INT, kode TEXT UNIQUE, nama TEXT, kategori TEXT DEFAULT '', satuan TEXT DEFAULT 'pcs', harga_beli INT DEFAULT 0, harga_jual INT DEFAULT 0, stok_min INT DEFAULT 0, aktif INT DEFAULT 1, created_at TEXT);
 CREATE TABLE stok (barang_id INT, unit TEXT, qty INT DEFAULT 0, PRIMARY KEY (barang_id, unit));
 CREATE TABLE stok_mutasi (id INTEGER PRIMARY KEY AUTOINCREMENT, barang_id INT, unit TEXT, tipe TEXT, qty INT, stok_setelah INT, harga_beli INT, pemasok TEXT DEFAULT '', ref_id INT, catatan TEXT DEFAULT '', user_id INT, created_at TEXT);
 CREATE TABLE dompet (santri_id INT PRIMARY KEY, saldo INT DEFAULT 0);
 CREATE TABLE dompet_mutasi (id INTEGER PRIMARY KEY AUTOINCREMENT, santri_id INT, tipe TEXT, jumlah INT, saldo_setelah INT, ref_id INT, catatan TEXT DEFAULT '', user_id INT, created_at TEXT);
 CREATE TABLE penjualan (id INTEGER PRIMARY KEY AUTOINCREMENT, no_struk TEXT DEFAULT '', tanggal TEXT, unit TEXT, santri_id INT, total INT, metode TEXT, dibayar INT DEFAULT 0, dibatalkan INT DEFAULT 0, alasan_batal TEXT, user_id INT, created_at TEXT, diskon INT DEFAULT 0, pelanggan TEXT, bukti_qris TEXT);
-CREATE TABLE penjualan_item (id INTEGER PRIMARY KEY AUTOINCREMENT, penjualan_id INT, barang_id INT, nama TEXT, qty INT, harga INT, harga_beli INT DEFAULT 0, subtotal INT);
+CREATE TABLE penjualan_item (id INTEGER PRIMARY KEY AUTOINCREMENT, konsinyasi TEXT, penjualan_id INT, barang_id INT, nama TEXT, qty INT, harga INT, harga_beli INT DEFAULT 0, subtotal INT);
 
 CREATE TABLE va_billing (id INTEGER PRIMARY KEY AUTOINCREMENT, trx_id TEXT UNIQUE, santri_id INT, virtual_account TEXT, jumlah INT, status TEXT DEFAULT 'menunggu', expired_at TEXT, dibayar_at TEXT, ntb TEXT, kelebihan INT DEFAULT 0, mode TEXT DEFAULT 'simulasi', dibuat_oleh INT, created_at TEXT);
 CREATE TABLE va_item (id INTEGER PRIMARY KEY AUTOINCREMENT, billing_id INT, tagihan_id INT, jumlah INT);
@@ -66,3 +66,6 @@ FROM santri;
 CREATE TABLE prestasi (id INTEGER PRIMARY KEY AUTOINCREMENT, santri_id INT, jenis TEXT, nama TEXT, tahun INT, sertifikat TEXT, created_by INT, created_at TEXT);
 
 CREATE TABLE qris_trx (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT UNIQUE, provider TEXT, jumlah INT, status TEXT DEFAULT 'menunggu', qr_url TEXT, penjualan_id INT, user_id INT, created_at TEXT, paid_at TEXT);
+
+CREATE TABLE hutang (id INTEGER PRIMARY KEY AUTOINCREMENT, pemasok TEXT, faktur TEXT DEFAULT '', tanggal TEXT, jatuh_tempo TEXT, total INT, dibayar INT DEFAULT 0, status TEXT DEFAULT 'belum', catatan TEXT DEFAULT '', user_id INT, created_at TEXT);
+CREATE TABLE hutang_bayar (id INTEGER PRIMARY KEY AUTOINCREMENT, jenis TEXT, hutang_id INT, pemasok TEXT, jumlah INT, tanggal TEXT, catatan TEXT DEFAULT '', user_id INT, created_at TEXT);

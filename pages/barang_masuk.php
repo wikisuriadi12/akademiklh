@@ -13,8 +13,9 @@ if (is_post()) {
     }
     try {
         $faktur = in_str('faktur');
-        $n = Gudang::masukBanyak($lok, in_str('pemasok'), trim(($faktur !== '' ? 'Faktur ' . $faktur . '. ' : '') . in_str('catatan')), $baris, Auth::id());
-        flash($n . ' item masuk ke stok ' . Pos::LOKASI[$lok] . ' dari ' . trim(in_str('pemasok')) . '.');
+        $jenis = in_array(in_str('jenis'), ['tunai', 'hutang', 'konsinyasi'], true) ? in_str('jenis') : 'tunai';
+        $n = Gudang::masukBanyak($lok, in_str('pemasok'), trim(($faktur !== '' ? 'Faktur ' . $faktur . '. ' : '') . in_str('catatan')), $baris, Auth::id(), $jenis, in_str('jatuh_tempo') ?: null, $faktur);
+        flash($n . ' item masuk ke stok ' . Pos::LOKASI[$lok] . ' dari ' . trim(in_str('pemasok')) . ['tunai' => '.', 'hutang' => ' (dicatat sebagai hutang).', 'konsinyasi' => ' (konsinyasi: dibayar setelah terjual).'][$jenis]);
         redirect('?p=barang_masuk&lok=' . $lok);
     } catch (InvalidArgumentException $ex) { flash($ex->getMessage(), 'err'); $unit = $lok; }
 }
@@ -29,7 +30,10 @@ ob_start(); ?>
     <label>Masuk ke <select name="lok"><?= options(Pos::LOKASI, $unit) ?></select></label>
     <label>Nama supplier <input name="pemasok" list="dl-pemasok" required maxlength="100" value="<?= e(in_str('pemasok')) ?>" placeholder="Ketik atau pilih supplier"></label>
     <label>No. faktur / surat jalan <input name="faktur" maxlength="60" placeholder="Opsional" value="<?= e(in_str('faktur')) ?>"></label>
+    <label>Jenis pembelian <select name="jenis" id="bm-jenis"><?= options(['tunai' => 'Tunai / lunas', 'hutang' => 'Hutang (bayar nanti)', 'konsinyasi' => 'Konsinyasi (titipan)'], in_str('jenis') ?: 'tunai') ?></select></label>
+    <label id="bm-tempo" style="display:none">Jatuh tempo hutang <input type="date" name="jatuh_tempo" value="<?= e(in_str('jatuh_tempo')) ?>"></label>
   </div>
+  <p class="mut" id="bm-info" style="margin:0 0 8px;display:none"></p>
   <datalist id="dl-pemasok"><?php foreach ($pemasokList as $p): ?><option value="<?= e($p) ?>"><?php endforeach; ?></datalist>
   <div class="scroll"><table class="rt" id="bm-t">
     <thead><tr><th>Barang</th><th class="r">Jumlah</th><th class="r">Harga beli satuan</th></tr></thead>
@@ -57,6 +61,13 @@ ob_start(); ?>
     });
     tb.appendChild(tr);
   }
+  var jn = document.getElementById('bm-jenis'), tp = document.getElementById('bm-tempo'), inf = document.getElementById('bm-info');
+  function jenis() {
+    tp.style.display = jn.value === 'hutang' ? '' : 'none';
+    inf.style.display = jn.value === 'tunai' ? 'none' : '';
+    inf.textContent = jn.value === 'hutang' ? 'Hutang: harga beli wajib diisi. Total tercatat sebagai hutang ke supplier dan dibayar lewat menu Hutang Supplier.' : (jn.value === 'konsinyasi' ? 'Konsinyasi: harga beli = harga setor per unit ke supplier. Tidak ada hutang saat barang masuk; hutang muncul hanya untuk barang yang terjual.' : '');
+  }
+  jn.addEventListener('change', jenis); jenis();
   for (var i = 0; i < 5; i++) { baris(); }
   document.getElementById('bm-tambah').addEventListener('click', baris);
 })();
