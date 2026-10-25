@@ -17,6 +17,7 @@ final class Settings
         'sesi_hadir' => 'Ngaji Subuh, Sekolah Pagi, Shalat Dzuhur, Ngaji Maghrib',
         'izin_wali' => '1',
         'qris_aktif' => '0',
+        'label_cfg' => '',
         'qris_nama' => 'LH MART MBL',
         'qris_nmid' => 'ID1026561527429',
         'qris_gambar' => '',

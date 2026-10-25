@@ -11,7 +11,8 @@ $nRendah = Gudang::jumlahRendah($unit);
 $jenis = count(Gudang::daftar($unit, '', false, true));
 ob_start(); ?>
 <div class="page-h"><div><h1>Stok Gudang</h1><p>Persediaan koperasi pondok <?= e(Domain::UNIT[$unit]) ?>. Stok berkurang otomatis saat kasir menjual.</p></div>
-  <?php if ($edit): ?><a class="btn" href="?p=barang"><?= icon('plus') ?> Barang baru</a><?php endif; ?></div>
+  <div style="display:flex;gap:8px"><a class="btn ghost" href="?p=label&amp;unit=<?= e($unit) ?>"><?= icon('tag') ?> Cetak label</a>
+  <?php if ($edit): ?><a class="btn" href="?p=barang"><?= icon('plus') ?> Barang baru</a><?php endif; ?></div></div>
 <div class="kpis">
   <div class="kpi"><div class="chip"><?= icon('box', 22) ?></div><div><span>Jenis barang aktif</span><b><?= (int) $jenis ?></b></div></div>
   <div class="kpi"><div class="chip c-acc"><?= icon('alert', 22) ?></div><div><span>Stok menipis / habis</span><b><?= (int) $nRendah ?></b></div></div>
