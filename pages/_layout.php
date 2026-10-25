@@ -1,7 +1,7 @@
 <?php
 /** @var string $title @var string $content @var array $cfg @var ?array $user @var array $flash @var string $lembaga @var bool|string $public */
 $cur = $_GET['p'] ?? 'dashboard';
-$alias = ['santri_form' => 'santri', 'santri_detail' => 'santri', 'santri_lengkap' => 'santri', 'kuitansi' => 'bayar', 'va_baru' => 'va', 'va_detail' => 'va', 'struk' => 'penjualan', 'gudang_item' => 'gudang', 'barang' => 'gudang', 'label' => 'label', 'impor_stok' => 'impor_stok', 'barang_masuk' => 'barang_masuk', 'laporan_pos' => 'laporan_pos'];
+$alias = ['santri_form' => 'santri', 'santri_detail' => 'santri', 'santri_lengkap' => 'santri', 'kuitansi' => 'bayar', 'va_baru' => 'va', 'va_detail' => 'va', 'struk' => 'penjualan', 'gudang_item' => 'gudang', 'barang' => 'gudang', 'label' => 'label', 'impor_stok' => 'impor_stok', 'barang_masuk' => 'barang_masuk', 'bukti_qris' => 'penjualan', 'laporan_pos' => 'laporan_pos'];
 $cur = $alias[$cur] ?? $cur;
 $asset = static fn(string $f): string => 'assets/' . $f . '?v=' . (@filemtime(__DIR__ . '/../assets/' . $f) ?: 8);
 $appName = $cfg['app_name'] ?? 'SPP & Data Santri';

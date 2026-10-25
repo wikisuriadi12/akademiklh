@@ -12,8 +12,13 @@ if (is_post()) {
         foreach ((array) ($_POST['qty'] ?? []) as $bid => $q) { $items[(int) $bid] = (int) $q; }
         $dibayar = (int) preg_replace('/\D/', '', in_str('dibayar', '0'));
         $diskon = (int) preg_replace('/\D/', '', in_str('diskon', '0'));
-        if (in_str('metode') === 'qris' && in_str('qris_ok') !== '1') { throw new InvalidArgumentException('Centang konfirmasi bahwa pembayaran QRIS sudah masuk.'); }
+        $bukti = null;
+        if (in_str('metode') === 'qris') {
+            if (in_str('qris_ok') !== '1') { throw new InvalidArgumentException('Centang konfirmasi bahwa notifikasi pembayaran QRIS sudah masuk dan nominalnya sesuai.'); }
+            $bukti = BuktiQris::siapkan($_FILES['bukti'] ?? null);
+        }
         $id = Pos::jual($unit, $sidP ?: null, $items, in_str('metode'), $dibayar, Auth::id(), $scope, $diskon, in_str('pelanggan'));
+        if ($bukti !== null) { try { BuktiQris::simpan($id, $bukti); } catch (Throwable $ex) { flash('Penjualan tersimpan, tetapi foto bukti gagal disimpan: ' . $ex->getMessage(), 'err'); redirect('?p=struk&id=' . $id); } }
         flash('Penjualan tersimpan.');
         redirect('?p=struk&id=' . $id);
     } catch (InvalidArgumentException $ex) {
@@ -116,7 +121,7 @@ ob_start(); ?>
   </main>
 
   <aside class="kp-panel">
-    <form method="post" id="kp-form" autocomplete="off">
+    <form method="post" id="kp-form" autocomplete="off" enctype="multipart/form-data">
       <?= csrf_field() ?>
       <input type="hidden" name="unit" value="<?= e($unit) ?>">
       <input type="hidden" name="santri_id" id="f-santri" value="">
@@ -125,6 +130,7 @@ ob_start(); ?>
       <input type="hidden" name="dibayar" id="f-dibayar" value="0">
       <input type="hidden" name="qris_ok" id="f-qris" value="0">
       <input type="hidden" name="pelanggan" id="f-pelanggan" value="Umum">
+      <input type="file" name="bukti" id="f-bukti" accept="image/*" capture="environment" hidden>
       <div id="f-items"></div>
 
       <div class="kp-ph"><h2>Pesanan #<?= e(str_pad((string) $noPesanan, 4, '0', STR_PAD_LEFT)) ?></h2><span class="kp-pill" id="kp-n">0 item</span><button type="button" class="kp-clear" id="kp-clear">Kosongkan</button></div>
@@ -165,5 +171,5 @@ ob_start(); ?>
   <ul class="kp-sl" id="sl-hasil"></ul>
   <div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Tutup</button></div>
 </div></dialog>
-<script src="assets/pos.js?v=6" defer></script>
+<script src="assets/pos.js?v=7" defer></script>
 <?php render('Kasir', ob_get_clean(), 'bare');

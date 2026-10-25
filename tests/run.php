@@ -292,6 +292,20 @@ ok('impor sistem lama: kolom stok ke Market', $rx['ok'] && Gudang::stok((int) Db
 $ry = Gudang::imporBarang([['Kode', 'Nama', 'Harga Jual', 'Stok'], ['OLD-2', 'Lama Dua', '6000', '4']], false, null);
 ok('impor sistem lama: kolom stok ke Gudang bawaan', $ry['ok'] && Gudang::stok((int) Db::val("SELECT id FROM barang WHERE kode='OLD-2'"), Pos::GUDANG) === 4);
 foreach ([$bm1, $bm2, (int) Db::val("SELECT id FROM barang WHERE kode='OLD-1'"), (int) Db::val("SELECT id FROM barang WHERE kode='OLD-2'")] as $zid) { Db::exec('DELETE FROM stok WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM barang WHERE id = ?', [$zid]); }
+// bukti QRIS
+define('BUKTI_UJI', true);
+$bq = sys_get_temp_dir() . '/bq_' . bin2hex(random_bytes(4)); define('BUKTI_DIR_UJI', $bq);
+$im = imagecreatetruecolor(2000, 1000); $png = sys_get_temp_dir() . '/bq_' . bin2hex(random_bytes(3)) . '.png'; imagepng($im, $png);
+throws('bukti qris wajib ada', fn() => BuktiQris::siapkan(null));
+throws('bukti qris bukan gambar ditolak', fn() => BuktiQris::siapkan(['error' => UPLOAD_ERR_OK, 'tmp_name' => __FILE__, 'size' => 10]));
+$bin = BuktiQris::siapkan(['error' => UPLOAD_ERR_OK, 'tmp_name' => $png, 'size' => filesize($png)]);
+$gi = getimagesizefromstring($bin);
+ok('bukti qris diperkecil jadi jpeg', $gi && $gi[2] === IMAGETYPE_JPEG && $gi[0] <= 1280);
+$idBq = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Umum');
+$nmBq = BuktiQris::simpan($idBq, $bin);
+ok('bukti qris tersimpan dan terhubung ke penjualan', BuktiQris::jalur($nmBq) !== null && Db::val('SELECT bukti_qris FROM penjualan WHERE id = ?', [$idBq]) === $nmBq);
+Pos::batalkan($idBq, 'uji', null, null);
+foreach (glob($bq . '/*') ?: [] as $zf) { @unlink($zf); } foreach (glob($bq . '/.htaccess') ?: [] as $zf) { @unlink($zf); } @rmdir($bq); @unlink($png);
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }

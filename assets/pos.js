@@ -204,10 +204,20 @@
       dbb.innerHTML = '<div class="kp-qrbox"><h3>Bayar dengan BNI QRIS</h3><p class="sub">' + esc(qris.nama || '') + (qris.nmid ? ' · NMID ' + esc(qris.nmid) : '') + '</p>' +
         (qris.img ? '<img src="' + esc(qris.img) + '" alt="QRIS">' : '') +
         '<div class="kp-big">' + rp(t) + '</div><p class="sub">Minta pembeli memasukkan nominal tepat di aplikasinya.</p>' +
-        '<label class="kp-chk"><input type="checkbox" id="ck-qris"> <span>Pembayaran sudah masuk (cek notifikasi aplikasi merchant)</span></label></div>' +
+        '<label class="kp-chk"><input type="checkbox" id="ck-qris"> <span>Notifikasi pembayaran sudah masuk di aplikasi merchant, dan nominalnya sama dengan total</span></label>' +
+        '<div class="kp-bukti"><button type="button" class="kp-btn ghost" id="bt-foto">Foto bukti notifikasi</button> <span id="nm-foto" class="sub">Belum ada foto</span><img id="pv-foto" alt="" style="display:none;max-width:160px;margin-top:8px;border-radius:8px"></div></div>' +
         '<div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Batal</button><button type="button" class="kp-btn" id="bt-ok" disabled>Selesaikan</button></div>';
-      var ck = $('#ck-qris', dbb), ok2 = $('#bt-ok', dbb);
-      ck.addEventListener('change', function () { ok2.disabled = !ck.checked; });
+      var ck = $('#ck-qris', dbb), ok2 = $('#bt-ok', dbb), fb = $('#f-bukti');
+      try { fb.value = ''; } catch (x) {}
+      var cek = function () { ok2.disabled = !(ck.checked && fb.files && fb.files.length); };
+      ck.addEventListener('change', cek);
+      $('#bt-foto', dbb).addEventListener('click', function () { fb.click(); });
+      fb.onchange = function () {
+        var f = fb.files && fb.files[0], pv = $('#pv-foto', dbb);
+        $('#nm-foto', dbb).textContent = f ? 'Foto terlampir' : 'Belum ada foto';
+        if (f && pv) { pv.src = URL.createObjectURL(f); pv.style.display = 'block'; }
+        cek();
+      };
       ok2.addEventListener('click', function () { kirim({ qris: 1 }); });
       buka(db);
     } else {
@@ -230,6 +240,7 @@
     $('#f-pelanggan').value = santri ? '' : (tipe === 'pegawai' ? 'Pegawai' + (nm ? ': ' + nm : '') : 'Umum');
     $('#f-dibayar').value = x.dibayar || 0;
     $('#f-qris').value = x.qris ? 1 : 0;
+    if (metode !== 'qris') { try { $('#f-bukti').value = ''; } catch (e) {} }
     $('#f-items').innerHTML = Object.keys(cart).map(function (id) { return '<input type="hidden" name="qty[' + id + ']" value="' + cart[id] + '">'; }).join('');
     form.submit();
   }
