@@ -58,7 +58,8 @@ $cfg = [
 $rail = [
     ['?p=pos', 'Kasir', 'grid', true, true],
     ['?p=penjualan', 'Riwayat', 'clock', Auth::can('penjualan'), false],
-    ['?p=gudang', 'Stok', 'box', Auth::can('gudang.view'), false],
+    ['?p=gudang&lok=ikhwan', 'Market', 'box', Auth::can('gudang.view'), false],
+    ['?p=gudang&lok=gudang', 'Gudang', 'box', Auth::can('gudang.view'), false],
     ['?p=dompet', 'Santri', 'users', Auth::can('dompet'), false],
     ['?p=akun_pos', 'Akun', 'shield', Auth::can('users'), false],
 ];

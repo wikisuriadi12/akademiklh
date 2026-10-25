@@ -49,7 +49,7 @@ if ($showApp) {
             ['pos', 'Kasir (POS)', 'cart', Auth::can('pos'), 0],
             ['penjualan', 'Penjualan', 'receipt', Auth::can('penjualan'), 0],
             ['dompet', 'Dompet Santri', 'wallet', Auth::can('dompet'), 0],
-            ['gudang', 'Stok Gudang', 'box', Auth::can('gudang.view'), $rendahN],
+            ['gudang', 'Stok Gudang & Market', 'box', Auth::can('gudang.view'), $rendahN],
             ['label', 'Cetak Label', 'tag', Auth::can('gudang.view'), 0],
             ['akun_pos', 'Akun LH Mart', 'shield', Auth::can('users'), 0],
         ],
