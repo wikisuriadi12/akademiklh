@@ -168,6 +168,16 @@ final class Gudang
         return $id;
     }
 
+    /** Daftarkan barang ke daftar stok Market (stok 0) agar tampil di Stok Market/kasir dan bisa menerima transfer. */
+    public static function daftarkanMarket(int $barangId, ?int $userId): bool
+    {
+        if (!self::find($barangId)) { throw new InvalidArgumentException('Barang tidak ditemukan.'); }
+        if (Db::val('SELECT 1 FROM stok WHERE barang_id = ? AND unit = ?', [$barangId, Pos::TOKO])) { return false; }
+        Db::exec('INSERT INTO stok (barang_id, unit, qty) VALUES (?,?,0)', [$barangId, Pos::TOKO]);
+        Db::audit($userId, 'daftar_market', 'stok', $barangId);
+        return true;
+    }
+
     public static function setAktif(int $id, bool $aktif, ?int $userId): void
     {
         Db::exec('UPDATE barang SET aktif = ? WHERE id = ?', [$aktif ? 1 : 0, $id]);

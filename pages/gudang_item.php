@@ -23,6 +23,9 @@ if (is_post() && $edit) {
             case 'transfer':
                 Gudang::transfer($id, in_str('dari'), in_str('ke'), $num('qty'), in_str('catatan'), Auth::id());
                 flash('Stok dipindahkan.'); break;
+            case 'daftar_market':
+                flash(Gudang::daftarkanMarket($id, Auth::id()) ? 'Barang terdaftar di Stok Market.' : 'Barang sudah ada di Stok Market.');
+                redirect('?p=gudang_item&id=' . $id . '&lok=ikhwan');
             case 'aktif':
                 Gudang::setAktif($id, in_str('aktif') === '1', Auth::id());
                 flash('Status barang diperbarui.'); break;
@@ -43,8 +46,14 @@ ob_start(); ?>
   <div class="kpi"><div class="chip c-ok"><?= icon('trending-up', 22) ?></div><div><span>Laba per satuan</span><b><?= rp($margin) ?></b></div></div>
 </div>
 <?php if ($edit): ?>
+<?php $adaMarket = (bool) Db::val('SELECT 1 FROM stok WHERE barang_id = ? AND unit = ?', [$id, Pos::TOKO]); ?>
+<?php if (!$adaMarket): ?>
+<form method="post" class="card form" style="margin-bottom:16px"><h2>Belum ada di Stok Market</h2><?= csrf_field() ?><input type="hidden" name="aksi" value="daftar_market">
+  <p class="mut" style="margin:0 0 10px">Barang ini belum tampil di Stok Market dan belum bisa menerima transfer dari Gudang. Daftarkan dulu (stok 0).</p>
+  <button class="btn"><?= icon('plus') ?> Tambahkan ke Stok Market</button></form>
+<?php endif; ?>
 <form method="post" class="card form" style="margin-bottom:16px"><h2>Transfer stok</h2><?= csrf_field() ?><input type="hidden" name="aksi" value="transfer"><input type="hidden" name="lok" value="<?= e($unit) ?>">
-  <p class="mut" style="margin:0 0 10px">Stok Gudang <b><?= Gudang::stok($id, Pos::GUDANG) ?></b> &middot; Stok Market <b><?= Gudang::stok($id, Pos::TOKO) ?></b>. Barang baru tampil di kasir setelah dipindahkan ke Market.</p>
+  <p class="mut" style="margin:0 0 10px">Stok Gudang <b><?= Gudang::stok($id, Pos::GUDANG) ?></b> &middot; Stok Market <b><?= Gudang::stok($id, Pos::TOKO) ?></b>. Transfer ke Market hanya untuk barang yang sudah terdaftar di Stok Market.</p>
   <label>Dari <select name="dari"><?= options(Pos::LOKASI, Pos::GUDANG) ?></select></label>
   <label>Ke <select name="ke"><?= options(Pos::LOKASI, Pos::TOKO) ?></select></label>
   <label>Jumlah <input name="qty" inputmode="numeric" required></label>

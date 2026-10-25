@@ -12,8 +12,10 @@ if (is_post()) {
     if (!$err) {
         try {
             $nid = Gudang::simpanBarang($c, $id ?: null, Auth::id());
-            flash($id ? 'Barang diperbarui.' : 'Barang ditambahkan. Isi stok awal di Gudang lewat "Barang masuk", lalu pindahkan ke Market lewat "Transfer stok".');
-            redirect('?p=gudang_item&id=' . $nid);
+            $ke = 'gudang';
+            if (!$id && in_str('ke_market') === '1') { Gudang::daftarkanMarket($nid, Auth::id()); $ke = 'ikhwan'; }
+            flash($id ? 'Barang diperbarui.' : ($ke === 'ikhwan' ? 'Barang ditambahkan dan terdaftar di Stok Market. Isi stok lewat "Barang masuk" (Market) atau transfer dari Gudang.' : 'Barang ditambahkan. Isi stok awal lewat "Barang masuk".'));
+            redirect('?p=gudang_item&id=' . $nid . '&lok=' . $ke);
         } catch (InvalidArgumentException $ex) { $err['kode'] = $ex->getMessage(); }
     }
 }
@@ -37,6 +39,7 @@ ob_start(); ?>
     <label>Harga pegawai / karyawan <input name="harga_pegawai" data-rupiah value="<?= $f('harga_pegawai') ?>" inputmode="numeric" placeholder="Kosong = sama dengan harga umum"><?= $er('harga_pegawai') ?></label>
     <label>Batas stok menipis <input name="stok_min" value="<?= $f('stok_min') ?>" inputmode="numeric"></label>
   </fieldset>
+  <?php if (!$id): ?><label class="chk"><input type="checkbox" name="ke_market" value="1" checked> Langsung tampilkan di Stok Market (stok 0)</label><?php endif; ?>
   <div class="acts"><button class="btn"><?= icon('check') ?> Simpan</button><a class="btn ghost" href="?p=gudang">Batal</a></div>
 </form>
 <?php render($id ? 'Ubah barang' : 'Barang baru', ob_get_clean());
