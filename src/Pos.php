@@ -6,6 +6,9 @@ final class Pos
 {
     /** LH Mart satu toko untuk umum, pegawai, dan santri. Kunci stok internal (kompatibel data lama). */
     public const TOKO = 'ikhwan';
+    /** Lokasi stok: market (kasir) dan gudang (penyimpanan). */
+    public const GUDANG = 'gudang';
+    public const LOKASI = ['gudang' => 'Gudang', 'ikhwan' => 'Market'];
 
     public static function saldo(int $santriId): int
     {

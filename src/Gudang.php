@@ -4,12 +4,12 @@ declare(strict_types=1);
 /** Barang dan stok gudang. Stok dipisah per unit (ikhwan/akhwat); semua perubahan lewat mutasi. */
 final class Gudang
 {
-    public const TIPE = ['masuk' => 'Barang masuk', 'keluar' => 'Keluar (rusak/hilang)', 'opname' => 'Opname', 'jual' => 'Terjual', 'batal_jual' => 'Batal jual'];
+    public const TIPE = ['masuk' => 'Barang masuk', 'keluar' => 'Keluar (rusak/hilang)', 'opname' => 'Opname', 'jual' => 'Terjual', 'batal_jual' => 'Batal jual', 'transfer_masuk' => 'Transfer masuk', 'transfer_keluar' => 'Transfer keluar'];
 
     private static function cekUnit(string $unit, ?string $scope): void
     {
-        if (!isset(Domain::UNIT[$unit])) {
-            throw new InvalidArgumentException('Unit tidak valid.');
+        if (!isset(Pos::LOKASI[$unit]) && !isset(Domain::UNIT[$unit])) {
+            throw new InvalidArgumentException('Lokasi stok tidak valid.');
         }
         if ($scope !== null && $scope !== $unit) {
             throw new InvalidArgumentException('Unit di luar cakupan akun Anda.');
@@ -69,9 +69,9 @@ final class Gudang
      * Daftar barang + stok untuk satu unit.
      * @return array<int,array>
      */
-    public static function daftar(string $unit, string $q = '', bool $rendah = false, bool $hanyaAktif = false): array
+    public static function daftar(string $unit, string $q = '', bool $rendah = false, bool $hanyaAktif = false, bool $hanyaAda = false): array
     {
-        $sql = 'SELECT b.*, COALESCE(s.qty, 0) AS qty FROM barang b LEFT JOIN stok s ON s.barang_id = b.id AND s.unit = ? WHERE 1=1';
+        $sql = 'SELECT b.*, COALESCE(s.qty, 0) AS qty FROM barang b ' . ($hanyaAda ? 'INNER JOIN' : 'LEFT JOIN') . ' stok s ON s.barang_id = b.id AND s.unit = ? WHERE 1=1';
         $p = [$unit];
         if ($q !== '') { $sql .= ' AND (b.nama LIKE ? OR b.kode LIKE ? OR b.kategori LIKE ?)'; $p = array_merge($p, ["%$q%", "%$q%", "%$q%"]); }
         if ($hanyaAktif) { $sql .= ' AND b.aktif = 1'; }
@@ -79,24 +79,44 @@ final class Gudang
         return Db::all($sql . ' ORDER BY b.kategori, b.nama', $p);
     }
 
-    /** Satu toko: pindahkan sisa stok unit Akhwat ke stok LH Mart (unit utama). Mengembalikan jumlah barang yang dipindah. */
+    /** Barang yang terbaca kasir: hanya yang tercatat di stok Market. */
+    public static function daftarMarket(string $q = ''): array
+    {
+        return self::daftar(Pos::TOKO, $q, false, true, true);
+    }
+
+    /** Pindahkan stok antar lokasi (gudang <-> market). */
+    public static function transfer(int $barangId, string $dari, string $ke, int $qty, string $catatan, ?int $userId): void
+    {
+        if (!isset(Pos::LOKASI[$dari]) || !isset(Pos::LOKASI[$ke]) || $dari === $ke) { throw new InvalidArgumentException('Lokasi asal dan tujuan harus berbeda.'); }
+        if ($qty <= 0) { throw new InvalidArgumentException('Jumlah transfer harus lebih dari 0.'); }
+        if (!self::find($barangId)) { throw new InvalidArgumentException('Barang tidak ditemukan.'); }
+        Db::transaction(function () use ($barangId, $dari, $ke, $qty, $catatan, $userId) {
+            $cat = trim($catatan) !== '' ? $catatan : (Pos::LOKASI[$dari] . ' ke ' . Pos::LOKASI[$ke]);
+            self::ubah($barangId, $dari, -$qty, 'transfer_keluar', ['catatan' => $cat, 'user_id' => $userId]);
+            self::ubah($barangId, $ke, $qty, 'transfer_masuk', ['catatan' => $cat, 'user_id' => $userId]);
+            Db::audit($userId, 'transfer', 'stok', $barangId, "$dari -> $ke $qty");
+        });
+    }
+
+    /** Pindahkan sisa stok lama unit Akhwat ke Gudang. Mengembalikan jumlah barang yang dipindah. */
     public static function gabungAkhwat(?int $userId): int
     {
         return Db::transaction(function () use ($userId) {
             $n = 0;
             foreach (Db::all('SELECT barang_id, qty FROM stok WHERE unit = ? AND qty > 0', ['akhwat']) as $r) {
-                self::ubah((int) $r['barang_id'], Pos::TOKO, (int) $r['qty'], 'masuk', ['catatan' => 'Gabung stok unit Akhwat', 'user_id' => $userId]);
-                self::ubah((int) $r['barang_id'], 'akhwat', -(int) $r['qty'], 'keluar', ['catatan' => 'Dipindah ke LH Mart', 'user_id' => $userId]);
+                self::ubah((int) $r['barang_id'], Pos::GUDANG, (int) $r['qty'], 'transfer_masuk', ['catatan' => 'Dari stok lama unit Akhwat', 'user_id' => $userId]);
+                self::ubah((int) $r['barang_id'], 'akhwat', -(int) $r['qty'], 'transfer_keluar', ['catatan' => 'Dipindah ke Gudang', 'user_id' => $userId]);
                 $n++;
             }
-            Db::audit($userId, 'gabung', 'stok', null, "akhwat -> " . Pos::TOKO . " $n barang");
+            Db::audit($userId, 'gabung', 'stok', null, "akhwat -> gudang $n barang");
             return $n;
         });
     }
 
     public static function jumlahRendah(string $unit): int
     {
-        return (int) Db::val('SELECT COUNT(*) FROM barang b LEFT JOIN stok s ON s.barang_id = b.id AND s.unit = ? WHERE b.aktif = 1 AND COALESCE(s.qty,0) <= b.stok_min', [$unit]);
+        return (int) Db::val('SELECT COUNT(*) FROM barang b ' . ($unit === Pos::TOKO ? 'INNER JOIN' : 'LEFT JOIN') . ' stok s ON s.barang_id = b.id AND s.unit = ? WHERE b.aktif = 1 AND COALESCE(s.qty,0) <= b.stok_min', [$unit]);
     }
 
     /** Nilai persediaan (harga beli) per unit. */

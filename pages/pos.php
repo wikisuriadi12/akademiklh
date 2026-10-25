@@ -22,7 +22,7 @@ if (is_post()) {
     }
 }
 
-$barang = Gudang::daftar($unit, '', false, true);
+$barang = Gudang::daftarMarket();
 usort($barang, static fn($a, $b) => (int) $a['id'] <=> (int) $b['id']);
 $noPesanan = (int) Db::val('SELECT COUNT(*) FROM penjualan WHERE tanggal = ?', [date('Y-m-d')]) + 1;
 $hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][(int) date('w')];
@@ -84,6 +84,7 @@ ob_start(); ?>
       <div><h1>Kasir</h1><p><?= e($koperasi) ?> &middot; <?= e($tanggal) ?></p></div>
     </header>
 
+    <?php if (!$barang): ?><div class="note warn" style="margin:0 0 12px">Belum ada barang di stok Market. Buka menu Stok, pilih barangnya, lalu Transfer stok dari Gudang ke Market.</div><?php endif; ?>
     <label class="kp-search"><?= icon('search', 20) ?><input type="search" id="kp-q" placeholder="Cari nama barang, SKU, atau pindai barcode" autocomplete="off" autofocus></label>
 
     <div class="kp-chips" id="kp-chips">

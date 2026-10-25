@@ -216,8 +216,20 @@ Pos::batalkan($idU, 'uji', null, null); Pos::batalkan($idV, 'uji', null, null);
 Gudang::ubah($b1, 'akhwat', 5, 'masuk', ['catatan' => 'uji gabung', 'user_id' => null]);
 $sebelum = Gudang::stok($b1, Pos::TOKO);
 Gudang::gabungAkhwat(null);
-ok('gabung stok akhwat ke toko', Gudang::stok($b1, Pos::TOKO) === $sebelum + 5 && Gudang::stok($b1, 'akhwat') === 0);
-Gudang::ubah($b1, Pos::TOKO, -5, 'keluar', ['catatan' => 'uji gabung', 'user_id' => null]);
+ok('stok akhwat lama pindah ke gudang', Gudang::stok($b1, Pos::GUDANG) >= 5 && Gudang::stok($b1, 'akhwat') === 0 && Gudang::stok($b1, Pos::TOKO) === $sebelum);
+$g0 = Gudang::stok($b1, Pos::GUDANG);
+Gudang::transfer($b1, Pos::GUDANG, Pos::TOKO, 3, '', null);
+ok('transfer gudang ke market', Gudang::stok($b1, Pos::GUDANG) === $g0 - 3 && Gudang::stok($b1, Pos::TOKO) === $sebelum + 3);
+throws('transfer melebihi stok gudang ditolak', fn() => Gudang::transfer($b1, Pos::GUDANG, Pos::TOKO, 99999, '', null));
+throws('transfer lokasi sama ditolak', fn() => Gudang::transfer($b1, Pos::TOKO, Pos::TOKO, 1, '', null));
+Gudang::transfer($b1, Pos::TOKO, Pos::GUDANG, 3, 'uji retur', null);
+$gBaru = (int) Db::val("SELECT COALESCE(MAX(id),0)+1 FROM barang");
+$idBaru = Gudang::simpanBarang(['kode' => 'ZZ-GDG', 'nama' => 'Barang hanya gudang', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 100, 'harga_jual' => 200, 'stok_min' => 0], null, null);
+Gudang::masuk($idBaru, Pos::GUDANG, 10, 100, '', '', null, null);
+ok('barang hanya di gudang tidak terbaca kasir', !in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
+Gudang::transfer($idBaru, Pos::GUDANG, Pos::TOKO, 4, '', null);
+ok('barang setelah transfer terbaca kasir', in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
+Db::exec('DELETE FROM stok WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM barang WHERE id = ?', [$idBaru]);
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }

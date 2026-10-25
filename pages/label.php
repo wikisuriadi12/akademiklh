@@ -27,7 +27,7 @@ if (is_post() && in_str('aksi') === 'simpan_cfg') {
 $tersimpan = json_decode(Settings::get('label_cfg', ''), true);
 $cfg = is_array($tersimpan) ? array_merge($bawaan, array_intersect_key($tersimpan, $bawaan)) : $bawaan;
 $barang = [];
-foreach (Gudang::daftar($unit, '', false, true) as $b) {
+foreach (Gudang::daftarMarket() as $b) {
     $barang[] = ['id' => (int) $b['id'], 'kode' => (string) $b['kode'], 'nama' => (string) $b['nama'], 'harga' => (int) $b['harga_jual'], 'qty' => (int) $b['qty']];
 }
 $json = json_encode(['cfg' => $cfg, 'items' => $barang], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);

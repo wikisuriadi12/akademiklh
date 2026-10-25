@@ -12,7 +12,7 @@ if (is_post()) {
     if (!$err) {
         try {
             $nid = Gudang::simpanBarang($c, $id ?: null, Auth::id());
-            flash($id ? 'Barang diperbarui.' : 'Barang ditambahkan. Isi stok awal lewat "Barang masuk".');
+            flash($id ? 'Barang diperbarui.' : 'Barang ditambahkan. Isi stok awal di Gudang lewat "Barang masuk", lalu pindahkan ke Market lewat "Transfer stok".');
             redirect('?p=gudang_item&id=' . $nid);
         } catch (InvalidArgumentException $ex) { $err['kode'] = $ex->getMessage(); }
     }
@@ -20,7 +20,7 @@ if (is_post()) {
 $f = static fn(string $k): string => e((string) ($val[$k] ?? ''));
 $er = static fn(string $k): string => '';
 ob_start(); ?>
-<div class="page-h"><div><h1><?= $id ? 'Ubah barang' : 'Barang baru' ?></h1><p>Katalog dipakai bersama; stok dicatat terpisah untuk Ikhwan dan Akhwat.</p></div></div>
+<div class="page-h"><div><h1><?= $id ? 'Ubah barang' : 'Barang baru' ?></h1><p>Katalog dipakai bersama; stok dicatat terpisah di Gudang dan di Market.</p></div></div>
 <?php if ($err): ?><div class="note err"><?php foreach ($err as $m): ?><div><?= e($m) ?></div><?php endforeach; ?></div><?php endif; ?>
 <form method="post" class="card form" autocomplete="off">
   <?= csrf_field() ?>

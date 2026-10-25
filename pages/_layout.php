@@ -16,7 +16,7 @@ if ($showApp && Auth::can('izin.view')) {
     try { $izinN = Izin::hitung('menunggu', Auth::scope()) + Izin::hitung('terlambat', Auth::scope()); } catch (Throwable $e) { $izinN = 0; }
 }
 if ($showApp && Auth::can('gudang.view')) {
-    try { $rendahN = Gudang::jumlahRendah(Auth::scope() ?? 'ikhwan') + (Auth::scope() === null ? Gudang::jumlahRendah('akhwat') : 0); } catch (Throwable $e) { $rendahN = 0; }
+    try { $rendahN = Gudang::jumlahRendah(Pos::TOKO); } catch (Throwable $e) { $rendahN = 0; }
 }
 $sis = $showApp ? Auth::sistem() : null;
 $sisNama = $sis ? Domain::SISTEM[$sis]['nama'] : $appName;
