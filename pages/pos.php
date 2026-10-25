@@ -1,12 +1,11 @@
 <?php
 if (Auth::user() && !Auth::can('pos')) { redirect(Auth::can('gudang.view') ? '?p=gudang' : '?p=penjualan'); }
 Auth::require('pos');
-$scope = Auth::scope();
-$unit = $scope ?? (in_array(in_str('unit'), ['ikhwan', 'akhwat'], true) ? in_str('unit') : 'ikhwan');
+$scope = null;
+$unit = Pos::TOKO;
 
 if (is_post()) {
     csrf_check();
-    $unit = in_array(in_str('unit'), ['ikhwan', 'akhwat'], true) ? in_str('unit') : $unit;
     $sidP = (int) in_str('santri_id', '0');
     try {
         $items = [];
@@ -19,7 +18,7 @@ if (is_post()) {
         redirect('?p=struk&id=' . $id);
     } catch (InvalidArgumentException $ex) {
         flash($ex->getMessage(), 'err');
-        redirect('?p=pos&unit=' . $unit);
+        redirect('?p=pos');
     }
 }
 
@@ -83,12 +82,6 @@ ob_start(); ?>
   <main class="kp-main">
     <header class="kp-head">
       <div><h1>Kasir</h1><p><?= e($koperasi) ?> &middot; <?= e($tanggal) ?></p></div>
-      <div class="kp-seg" role="tablist">
-        <?php foreach (Domain::UNIT as $k => $v): $boleh = $scope === null || $scope === $k; ?>
-          <?php if ($boleh): ?><a class="<?= $unit === $k ? 'on' : '' ?>" href="?p=pos&amp;unit=<?= e($k) ?>">Unit <?= e($v) ?></a>
-          <?php else: ?><span class="off">Unit <?= e($v) ?></span><?php endif; ?>
-        <?php endforeach; ?>
-      </div>
     </header>
 
     <label class="kp-search"><?= icon('search', 20) ?><input type="search" id="kp-q" placeholder="Cari nama barang, SKU, atau pindai barcode" autocomplete="off" autofocus></label>
@@ -115,7 +108,7 @@ ob_start(); ?>
       <?php endforeach; ?>
     </div>
     <p class="kp-none" id="kp-none" hidden>Tidak ada barang yang cocok.</p>
-    <p class="kp-foot" id="kp-foot" data-total="<?= count($barang) ?>" data-unit="<?= e(Domain::UNIT[$unit]) ?>">Menampilkan <?= count($barang) ?> dari <?= count($barang) ?> barang untuk Unit <?= e(Domain::UNIT[$unit]) ?></p>
+    <p class="kp-foot" id="kp-foot" data-total="<?= count($barang) ?>" data-unit="">Menampilkan <?= count($barang) ?> dari <?= count($barang) ?> barang</p>
   </main>
 
   <aside class="kp-panel">
@@ -168,5 +161,5 @@ ob_start(); ?>
   <ul class="kp-sl" id="sl-hasil"></ul>
   <div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Tutup</button></div>
 </div></dialog>
-<script src="assets/pos.js?v=2" defer></script>
+<script src="assets/pos.js?v=3" defer></script>
 <?php render('Kasir', ob_get_clean(), 'bare');

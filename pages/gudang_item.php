@@ -1,15 +1,14 @@
 <?php
 Auth::require('gudang.view');
-$scope = Auth::scope();
+$scope = null;
 $edit = Auth::can('gudang.edit');
 $id = (int) in_str('id', '0');
 $b = Gudang::find($id);
 if (!$b) { http_response_code(404); render('Tidak ditemukan', '<div class="card"><div class="empty">Barang tidak ditemukan.</div></div>'); exit; }
-$unit = $scope ?? (in_array(in_str('unit'), ['ikhwan', 'akhwat'], true) ? in_str('unit') : 'ikhwan');
+$unit = Pos::TOKO;
 $num = static fn(string $k): int => (int) preg_replace('/\D/', '', in_str($k, '0'));
 if (is_post() && $edit) {
     csrf_check();
-    $unit = in_array(in_str('unit'), ['ikhwan', 'akhwat'], true) ? in_str('unit') : $unit;
     try {
         switch (in_str('aksi')) {
             case 'masuk':
@@ -34,11 +33,8 @@ $margin = (int) $b['harga_jual'] - (int) $b['harga_beli'];
 ob_start(); ?>
 <div class="page-h"><div><h1><?= e($b['nama']) ?></h1><p><?= e($b['kode']) ?> &middot; <?= e($b['kategori'] ?: 'Tanpa kategori') ?> &middot; <?= (int) $b['aktif'] ? 'Aktif' : 'Nonaktif' ?></p></div>
   <div class="acts"><?php if ($edit): ?><a class="btn ghost" href="?p=barang&amp;id=<?= $id ?>"><?= icon('edit') ?> Ubah data</a><?php endif; ?><a class="btn ghost" href="?p=gudang&amp;unit=<?= e($unit) ?>">Kembali</a></div></div>
-<?php if ($scope === null): ?>
-<div class="tabs"><?php foreach (Domain::UNIT as $k => $v): ?><a class="<?= $unit === $k ? 'on' : '' ?>" href="?p=gudang_item&amp;id=<?= $id ?>&amp;unit=<?= $k ?>">Pondok <?= e($v) ?></a><?php endforeach; ?></div>
-<?php endif; ?>
 <div class="kpis">
-  <div class="kpi"><div class="chip"><?= icon('box', 22) ?></div><div><span>Stok <?= e(Domain::UNIT[$unit]) ?></span><b><?= $stok ?> <?= e($b['satuan']) ?></b></div></div>
+  <div class="kpi"><div class="chip"><?= icon('box', 22) ?></div><div><span>Stok</span><b><?= $stok ?> <?= e($b['satuan']) ?></b></div></div>
   <div class="kpi"><div class="chip c-info"><?= icon('tag', 22) ?></div><div><span>Harga jual / beli</span><b><?= rp($b['harga_jual']) ?></b><small class="mut">modal <?= rp($b['harga_beli']) ?></small></div></div>
   <div class="kpi"><div class="chip c-ok"><?= icon('trending-up', 22) ?></div><div><span>Laba per satuan</span><b><?= rp($margin) ?></b></div></div>
 </div>

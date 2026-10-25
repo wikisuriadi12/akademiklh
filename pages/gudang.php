@@ -1,18 +1,30 @@
 <?php
 Auth::require('gudang.view');
-$scope = Auth::scope();
-$unit = $scope ?? (in_array(in_str('unit'), ['ikhwan', 'akhwat'], true) ? in_str('unit') : 'ikhwan');
+$scope = null;
+$unit = Pos::TOKO;
 $q = in_str('q');
 $rendah = in_str('rendah') === '1';
 $edit = Auth::can('gudang.edit');
+if (is_post() && in_str('aksi') === 'gabung' && $edit) {
+    csrf_check();
+    $n = Gudang::gabungAkhwat(Auth::id());
+    flash($n . ' barang dipindah dari stok lama (Akhwat) ke stok LH Mart.');
+    redirect('?p=gudang');
+}
+$sisaAkhwat = (int) Db::val('SELECT COUNT(*) FROM stok WHERE unit = ? AND qty > 0', ['akhwat']);
 $rows = Gudang::daftar($unit, $q, $rendah);
 $nilai = Gudang::nilaiPersediaan($unit);
 $nRendah = Gudang::jumlahRendah($unit);
 $jenis = count(Gudang::daftar($unit, '', false, true));
 ob_start(); ?>
-<div class="page-h"><div><h1>Stok Gudang</h1><p>Persediaan koperasi pondok <?= e(Domain::UNIT[$unit]) ?>. Stok berkurang otomatis saat kasir menjual.</p></div>
-  <div style="display:flex;gap:8px"><a class="btn ghost" href="?p=label&amp;unit=<?= e($unit) ?>"><?= icon('tag') ?> Cetak label</a>
+<div class="page-h"><div><h1>Stok Gudang</h1><p>Persediaan LH Mart. Stok berkurang otomatis saat kasir menjual.</p></div>
+  <div style="display:flex;gap:8px"><a class="btn ghost" href="?p=label"><?= icon('tag') ?> Cetak label</a>
   <?php if ($edit): ?><a class="btn" href="?p=barang"><?= icon('plus') ?> Barang baru</a><?php endif; ?></div></div>
+<?php if ($edit && $sisaAkhwat > 0): ?>
+<div class="card" style="margin-bottom:16px"><form method="post" class="inline"><?= csrf_field() ?><input type="hidden" name="aksi" value="gabung">
+  <b>Ada stok lama di unit Akhwat (<?= $sisaAkhwat ?> barang).</b> Sekarang LH Mart satu toko, jadi stok itu belum terhitung di kasir.
+  <button class="btn sm" data-confirm="Pindahkan semua stok unit Akhwat ke stok LH Mart?">Gabungkan ke LH Mart</button></form></div>
+<?php endif; ?>
 <div class="kpis">
   <div class="kpi"><div class="chip"><?= icon('box', 22) ?></div><div><span>Jenis barang aktif</span><b><?= (int) $jenis ?></b></div></div>
   <div class="kpi"><div class="chip c-acc"><?= icon('alert', 22) ?></div><div><span>Stok menipis / habis</span><b><?= (int) $nRendah ?></b></div></div>
@@ -20,7 +32,6 @@ ob_start(); ?>
 </div>
 <div class="card">
   <form method="get" class="filters"><input type="hidden" name="p" value="gudang">
-    <?php if ($scope === null): ?><select name="unit"><?= options(Domain::UNIT, $unit) ?></select><?php endif; ?>
     <input name="q" placeholder="Cari nama, kode, kategori..." value="<?= e($q) ?>">
     <label class="chk"><input type="checkbox" name="rendah" value="1" <?= $rendah ? 'checked' : '' ?>> Hanya stok menipis</label>
     <button class="btn"><?= icon('search') ?> Tampilkan</button>

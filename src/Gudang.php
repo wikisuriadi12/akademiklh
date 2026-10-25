@@ -79,6 +79,21 @@ final class Gudang
         return Db::all($sql . ' ORDER BY b.kategori, b.nama', $p);
     }
 
+    /** Satu toko: pindahkan sisa stok unit Akhwat ke stok LH Mart (unit utama). Mengembalikan jumlah barang yang dipindah. */
+    public static function gabungAkhwat(?int $userId): int
+    {
+        return Db::transaction(function () use ($userId) {
+            $n = 0;
+            foreach (Db::all('SELECT barang_id, qty FROM stok WHERE unit = ? AND qty > 0', ['akhwat']) as $r) {
+                self::ubah((int) $r['barang_id'], Pos::TOKO, (int) $r['qty'], 'masuk', ['catatan' => 'Gabung stok unit Akhwat', 'user_id' => $userId]);
+                self::ubah((int) $r['barang_id'], 'akhwat', -(int) $r['qty'], 'keluar', ['catatan' => 'Dipindah ke LH Mart', 'user_id' => $userId]);
+                $n++;
+            }
+            Db::audit($userId, 'gabung', 'stok', null, "akhwat -> " . Pos::TOKO . " $n barang");
+            return $n;
+        });
+    }
+
     public static function jumlahRendah(string $unit): int
     {
         return (int) Db::val('SELECT COUNT(*) FROM barang b LEFT JOIN stok s ON s.barang_id = b.id AND s.unit = ? WHERE b.aktif = 1 AND COALESCE(s.qty,0) <= b.stok_min', [$unit]);

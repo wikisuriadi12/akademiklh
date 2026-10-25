@@ -1,6 +1,6 @@
 <?php
 Auth::require('dompet');
-$scope = Auth::scope();
+$scope = null;
 $sid = (int) in_str('santri', '0');
 $num = static fn(string $k): int => (int) preg_replace('/\D/', '', in_str($k, '0'));
 if (is_post()) {

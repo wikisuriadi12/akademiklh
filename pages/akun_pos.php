@@ -28,7 +28,7 @@ if (is_post()) {
         }
         if ($aksi === 'ubah') {
             if (!isset($peran[in_str('role')])) { throw new InvalidArgumentException('Peran tidak valid.'); }
-            Auth::updateUser($uid, in_str('nama'), in_str('role'), in_str('unit'), Auth::id());
+            Auth::updateUser($uid, in_str('nama'), in_str('role'), 'semua', Auth::id());
             flash('Data akun diperbarui. Akun itu perlu login ulang.');
         } elseif ($aksi === 'reset') {
             Auth::resetPassword($uid, (string) ($_POST['password'] ?? ''), Auth::id());
@@ -41,7 +41,7 @@ if (is_post()) {
             flash('Status akun diperbarui.');
         } else {
             if (!isset($peran[in_str('role')])) { throw new InvalidArgumentException('Peran tidak valid.'); }
-            Auth::createUser(in_str('username'), in_str('nama'), in_str('role'), in_str('unit'), (string) ($_POST['password'] ?? ''), Auth::id());
+            Auth::createUser(in_str('username'), in_str('nama'), in_str('role'), 'semua', (string) ($_POST['password'] ?? ''), Auth::id());
             flash('Akun ditambahkan.');
         }
     } catch (InvalidArgumentException $ex) {
@@ -56,12 +56,11 @@ ob_start(); ?>
 <div class="page-h"><div><h1>Akun LH Mart &amp; Gudang</h1><p><?= count($users) ?> akun: admin, kasir, dan petugas gudang</p></div></div>
 <div class="card">
   <div class="scroll"><table class="rt">
-    <thead><tr><th>Petugas</th><th>Peran</th><th>Unit</th><th>Login terakhir</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Petugas</th><th>Peran</th><th>Login terakhir</th><th>Status</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($users as $u): $ll = Auth::lastLogin((int) $u['id']); ?>
       <tr><td class="who-c"><div class="who"><?= avatar($u['nama']) ?><span><b><?= e($u['nama']) ?></b><small><?= e($u['username']) ?></small></span></div></td>
         <td data-label="Peran"><?= e($peran[$u['role']]) ?></td>
-        <td data-label="Unit"><?= e($u['unit_akses'] === 'semua' ? 'Semua' : Domain::UNIT[$u['unit_akses']]) ?></td>
         <td data-label="Login terakhir"><?= $ll ? e(substr($ll, 0, 16)) : '<span class="mut">Belum pernah</span>' ?></td>
         <td data-label="Status"><?= $u['aktif'] ? '<span class="badge b-aktif">Aktif</span>' : '<span class="badge">Nonaktif</span>' ?></td>
         <td class="r"><a class="btn sm ghost" href="?p=akun_pos&amp;edit=<?= (int) $u['id'] ?>#form-edit">Kelola</a></td></tr>
@@ -74,7 +73,6 @@ ob_start(); ?>
   <form method="post" class="card form" autocomplete="off"><h2>Ubah akun: <?= e($ed['username']) ?></h2><?= csrf_field() ?><input type="hidden" name="aksi" value="ubah"><input type="hidden" name="uid" value="<?= (int) $ed['id'] ?>">
     <label>Nama <input name="nama" value="<?= e($ed['nama']) ?>" required></label>
     <label>Peran <select name="role"><?= options($peran, $ed['role']) ?></select></label>
-    <label>Cakupan unit <select name="unit"><?= options($unitOpt, $ed['unit_akses']) ?></select></label>
     <button class="btn"><?= icon('check') ?> Simpan</button></form>
   <div>
     <form method="post" class="card form" autocomplete="off"><h2>Reset password</h2><?= csrf_field() ?><input type="hidden" name="aksi" value="reset"><input type="hidden" name="uid" value="<?= (int) $ed['id'] ?>">
@@ -96,7 +94,6 @@ ob_start(); ?>
     <label>Username <input name="username" required autocapitalize="none"></label>
     <label>Nama <input name="nama" required></label>
     <label>Peran <select name="role"><?= options($peran, 'kasir') ?></select></label>
-    <label>Cakupan unit <select name="unit"><?= options($unitOpt) ?></select></label>
     <label>Password awal (min. 10 karakter) <input type="password" name="password" required minlength="10"></label>
   </fieldset>
   <button class="btn"><?= icon('plus') ?> Tambah</button>

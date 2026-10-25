@@ -4,6 +4,9 @@ declare(strict_types=1);
 /** Kasir (point of sales) dan dompet (uang saku) santri. Penjualan otomatis memotong stok gudang. */
 final class Pos
 {
+    /** LH Mart satu toko untuk umum, pegawai, dan santri. Kunci stok internal (kompatibel data lama). */
+    public const TOKO = 'ikhwan';
+
     public static function saldo(int $santriId): int
     {
         return (int) Db::val('SELECT saldo FROM dompet WHERE santri_id = ?', [$santriId]);
@@ -94,7 +97,6 @@ final class Pos
         }
         if ($santriId) {
             $s = self::santriUnit($santriId, $scope);
-            if ($s['unit'] !== $unit) { throw new InvalidArgumentException('Santri berada di unit lain.'); }
         }
         if ($diskon < 0) { throw new InvalidArgumentException('Diskon tidak valid.'); }
         $pelanggan = $santriId ? null : mb_substr(trim((string) $pelanggan), 0, 80);

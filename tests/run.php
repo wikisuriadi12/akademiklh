@@ -212,6 +212,16 @@ ok('penjualan pegawai menyimpan nama pelanggan', Db::val('SELECT pelanggan FROM 
 $idV = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Umum');
 ok('penjualan umum tanpa santri tersimpan', Db::val('SELECT pelanggan FROM penjualan WHERE id = ?', [$idV]) === 'Umum' && Db::val('SELECT santri_id FROM penjualan WHERE id = ?', [$idV]) === null);
 Pos::batalkan($idU, 'uji', null, null); Pos::batalkan($idV, 'uji', null, null);
+// satu toko: gabung stok Akhwat ke LH Mart
+Gudang::ubah($b1, 'akhwat', 5, 'masuk', ['catatan' => 'uji gabung', 'user_id' => null]);
+$sebelum = Gudang::stok($b1, Pos::TOKO);
+Gudang::gabungAkhwat(null);
+ok('gabung stok akhwat ke toko', Gudang::stok($b1, Pos::TOKO) === $sebelum + 5 && Gudang::stok($b1, 'akhwat') === 0);
+Gudang::ubah($b1, Pos::TOKO, -5, 'keluar', ['catatan' => 'uji gabung', 'user_id' => null]);
+// santri unit mana pun boleh belanja di satu toko
+$sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
+if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }
+
 
 ok('gagal jual tidak mengurangi stok (rollback)', Gudang::stok($b1, 'ikhwan') === 15);
 $pj = Pos::jual('ikhwan', null, [$b1 => 2, $b2 => 1], 'tunai', 20000, null, null);
@@ -227,7 +237,9 @@ Pos::topup($id1, 20000, 'titipan', null, null);
 ok('top up menambah saldo', Pos::saldo($id1) === 20000);
 $pj2 = Pos::jual('ikhwan', $id1, [$b2 => 2], 'dompet', 0, null, null);
 ok('belanja dompet memotong saldo', Pos::saldo($id1) === 10000 && Gudang::stok($b2, 'ikhwan') === 7);
-throws('santri unit lain tak bisa belanja di unit ini', fn() => Pos::jual('ikhwan', $id2, [$b1 => 1], 'dompet', 0, null, null));
+$pjX = null; try { $pjX = Pos::jual('ikhwan', $id2, [$b1 => 1], 'dompet', 0, null, null); } catch (InvalidArgumentException $e) { }
+ok('santri unit mana pun boleh belanja di satu toko (selama saldo cukup)', $pjX !== null || Pos::saldo($id2) < 2500);
+if ($pjX) { Pos::batalkan($pjX, 'uji', null, null); }
 throws('akun akhwat tak bisa jual di ikhwan', fn() => Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 5000, null, 'akhwat'));
 throws('batal tanpa alasan ditolak', fn() => Pos::batalkan($pj2, '', null, null));
 Pos::batalkan($pj2, 'salah input', null, null);

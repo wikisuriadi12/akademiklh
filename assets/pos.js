@@ -85,7 +85,7 @@
       c.hidden = !ok; if (ok) { tampil++; }
     });
     var f = $('#kp-foot');
-    f.textContent = 'Menampilkan ' + tampil + ' dari ' + f.dataset.total + ' barang untuk Unit ' + f.dataset.unit;
+    f.textContent = 'Menampilkan ' + tampil + ' dari ' + f.dataset.total + ' barang';
     $('#kp-none').hidden = tampil > 0;
   }
 

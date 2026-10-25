@@ -1,8 +1,8 @@
 <?php
 // Cetak label barang (rak/etalase): ukuran, isi, dan tata letak diatur sendiri.
 Auth::require('gudang.view');
-$scope = Auth::scope();
-$unit = $scope ?? (in_array(in_str('unit'), ['ikhwan', 'akhwat'], true) ? in_str('unit') : 'ikhwan');
+$scope = null;
+$unit = Pos::TOKO;
 $bawaan = ['mode' => 'roll', 'w' => 40, 'h' => 30, 'kol' => 3, 'gap' => 2, 'toko' => 'LH Mart', 'tToko' => 1, 'tNama' => 1, 'tHarga' => 1, 'tKode' => 1, 'tBarcode' => 1, 'fNama' => 9, 'fHarga' => 12, 'rata' => 'center'];
 $batas = ['w' => [15, 210], 'h' => [10, 297], 'kol' => [1, 8], 'gap' => [0, 20], 'fNama' => [5, 24], 'fHarga' => [6, 36]];
 
@@ -39,9 +39,6 @@ ob_start(); ?>
 <div class="lb-wrap">
   <div class="card">
     <div class="filters" style="margin-bottom:10px">
-      <?php if ($scope === null): ?>
-      <form method="get"><input type="hidden" name="p" value="label"><select name="unit" onchange="this.form.submit()"><?= options(Domain::UNIT, $unit) ?></select></form>
-      <?php endif; ?>
       <input id="lb-cari" placeholder="Cari barang..." style="flex:1">
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
