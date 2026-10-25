@@ -7,6 +7,15 @@ if (is_post()) {
     try {
         $aksi = in_str('aksi');
         $uid = (int) in_str('uid');
+        if ($aksi === 'qris_bawaan') {
+            $b = APP_ROOT . '/assets/qris-bawaan/lh-mart.png';
+            if (!is_file($b)) { throw new InvalidArgumentException('Berkas QR bawaan tidak ada di server. Unggah gambar QR manual.'); }
+            Qris::simpan(['tmp_name' => $b, 'size' => (int) filesize($b), 'error' => UPLOAD_ERR_OK]);
+            Settings::set('qris_nama', 'LH MART MBL'); Settings::set('qris_nmid', 'ID1026561527429'); Settings::set('qris_aktif', '1');
+            Db::audit(Auth::id(), 'ubah', 'pengaturan', null, 'qris bawaan aktif');
+            flash('QRIS LH MART MBL dipasang dan diaktifkan. Metode BNI QRIS kini muncul di kasir.');
+            redirect('?p=akun_pos');
+        }
         if ($aksi === 'qris') {
             Settings::set('qris_nama', mb_substr(trim(in_str('qris_nama')), 0, 80) ?: Settings::DEFAULTS['qris_nama']);
             Settings::set('qris_nmid', mb_substr((string) preg_replace('/[^A-Za-z0-9]/', '', in_str('qris_nmid')), 0, 30));
@@ -98,6 +107,10 @@ ob_start(); ?>
   </fieldset>
   <button class="btn"><?= icon('plus') ?> Tambah</button>
 </form>
+<form method="post" class="card form" style="margin-top:16px"><?= csrf_field() ?><input type="hidden" name="aksi" value="qris_bawaan">
+  <h2>Aktifkan QRIS LH MART MBL</h2>
+  <p class="mut" style="margin:0 0 10px">Satu klik: memasang QR LH MART MBL (NMID ID1026561527429) dan menampilkannya sebagai metode bayar di kasir.</p>
+  <button class="btn"><?= icon('check') ?> Pasang &amp; aktifkan QRIS</button></form>
 <form method="post" enctype="multipart/form-data" class="card form" autocomplete="off" style="margin-top:16px">
   <h2>Pembayaran QRIS kasir</h2>
   <?= csrf_field() ?><input type="hidden" name="aksi" value="qris">
