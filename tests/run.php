@@ -344,6 +344,20 @@ ok('callback tanda tangan salah ditolak', $k1 === 403 && QrisApi::status($tm3['r
 QrisApi::$http = fn() => [200, json_encode(['transaction_status' => 'pending'])];
 ok('callback sah menandai lunas', $k2 === 200 && QrisApi::status($tm3['ref']) === 'lunas');
 QrisApi::$http = null; Settings::set('qris_api_provider', ''); Settings::set('qris_api_secret', '');
+// laporan LH Mart
+$lp0 = date('Y-m-d');
+$idL1 = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Umum');
+$idL2 = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Pegawai: Cici');
+$rk = LaporanPos::ringkasan($lp0, $lp0);
+ok('laporan ringkasan menghitung transaksi sah', $rk['n'] >= 2 && $rk['omzet'] > 0 && $rk['qty'] >= 2);
+$pj = array_column(LaporanPos::perJenis($lp0, $lp0), 'n', 'jenis');
+ok('laporan per jenis pelanggan memisah pegawai dan umum', ($pj['pegawai'] ?? 0) >= 1 && ($pj['umum'] ?? 0) >= 1);
+ok('laporan produk memuat barang terjual', count(LaporanPos::produk($lp0, $lp0)) >= 1 && count(LaporanPos::kategori($lp0, $lp0)) >= 1 && count(LaporanPos::perKasir($lp0, $lp0)) >= 1);
+ok('laporan transaksi filter pegawai', count(LaporanPos::transaksi($lp0, $lp0, '', 'pegawai')) >= 1);
+ok('laporan per hari memuat hari ini', LaporanPos::perHari($lp0, $lp0)[$lp0]['n'] >= 2);
+ok('laporan stok dan mutasi bisa dibaca', is_array(LaporanPos::stok(Pos::TOKO)) && is_array(LaporanPos::stok(Pos::GUDANG, 'habis')) && is_array(LaporanPos::mutasi($lp0, $lp0)) && is_array(LaporanPos::tidakLaku($lp0, $lp0)));
+Pos::batalkan($idL1, 'uji', null, null); Pos::batalkan($idL2, 'uji', null, null);
+ok('transaksi batal tidak dihitung di omzet', LaporanPos::ringkasan($lp0, $lp0)['n'] === $rk['n'] - 2 && LaporanPos::ringkasan($lp0, $lp0)['batal_n'] >= 2);
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }
