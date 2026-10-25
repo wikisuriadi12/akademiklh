@@ -103,14 +103,16 @@ final class Pos
         }
         if ($diskon < 0) { throw new InvalidArgumentException('Diskon tidak valid.'); }
         $pelanggan = $santriId ? null : mb_substr(trim((string) $pelanggan), 0, 80);
-        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId, $diskon, $pelanggan) {
+        $hargaPegawai = !$santriId && $pelanggan !== null && stripos($pelanggan, 'Pegawai') === 0;
+        return Db::transaction(function () use ($unit, $santriId, $items, $metode, $dibayar, $userId, $diskon, $pelanggan, $hargaPegawai) {
             $baris = []; $total = 0;
             foreach ($items as $bid => $qty) {
                 $b = Gudang::find((int) $bid);
                 if (!$b || !(int) $b['aktif']) { throw new InvalidArgumentException('Ada barang yang tidak tersedia.'); }
                 $qty = (int) $qty;
+                $b['harga_pakai'] = $hargaPegawai && ($b['harga_pegawai'] ?? null) !== null ? (int) $b['harga_pegawai'] : (int) $b['harga_jual'];
                 $baris[] = [$b, $qty];
-                $total += $qty * (int) $b['harga_jual'];
+                $total += $qty * $b['harga_pakai'];
             }
             if ($diskon > $total) { throw new InvalidArgumentException('Diskon tidak boleh melebihi subtotal ' . rp($total) . '.'); }
             $total -= $diskon;
@@ -130,7 +132,7 @@ final class Pos
             foreach ($baris as [$b, $qty]) {
                 Gudang::ubah((int) $b['id'], $unit, -$qty, 'jual', ['ref_id' => $id, 'catatan' => $no, 'user_id' => $userId]);
                 Db::exec('INSERT INTO penjualan_item (penjualan_id, barang_id, nama, qty, harga, harga_beli, subtotal) VALUES (?,?,?,?,?,?,?)',
-                    [$id, $b['id'], $b['nama'], $qty, $b['harga_jual'], $b['harga_beli'], $qty * (int) $b['harga_jual']]);
+                    [$id, $b['id'], $b['nama'], $qty, $b['harga_pakai'], $b['harga_beli'], $qty * $b['harga_pakai']]);
             }
             if ($metode === 'dompet') {
                 self::ubahSaldo((int) $santriId, -$total, 'belanja', $id, $no, $userId);

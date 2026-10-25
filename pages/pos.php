@@ -98,7 +98,7 @@ ob_start(); ?>
           $kat = $b['kategori'] !== '' ? $b['kategori'] : 'Lainnya';
           $qty = (int) $b['qty']; $habis = $qty <= 0; $rendah = !$habis && $qty <= (int) $b['stok_min']; ?>
         <button type="button" class="kp-card<?= $habis ? ' habis' : '' ?>" <?= $habis ? 'disabled' : '' ?>
-          data-id="<?= (int) $b['id'] ?>" data-nama="<?= e($b['nama']) ?>" data-kode="<?= e($b['kode']) ?>" data-harga="<?= (int) $b['harga_jual'] ?>" data-stok="<?= $qty ?>" data-kat="<?= e($kat) ?>"
+          data-id="<?= (int) $b['id'] ?>" data-nama="<?= e($b['nama']) ?>" data-kode="<?= e($b['kode']) ?>" data-harga="<?= (int) $b['harga_jual'] ?>" data-hp="<?= ($b['harga_pegawai'] ?? null) !== null ? (int) $b['harga_pegawai'] : '' ?>" data-stok="<?= $qty ?>" data-kat="<?= e($kat) ?>"
           data-cari="<?= e(mb_strtolower($b['nama'] . ' ' . $b['kode'] . ' ' . $kat)) ?>">
           <span class="kp-av n-<?= e($nada($kat)) ?>"><?= e($inisial($b['nama'])) ?></span>
           <span class="kp-qty" hidden></span>
@@ -163,5 +163,5 @@ ob_start(); ?>
   <ul class="kp-sl" id="sl-hasil"></ul>
   <div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Tutup</button></div>
 </div></dialog>
-<script src="assets/pos.js?v=3" defer></script>
+<script src="assets/pos.js?v=5" defer></script>
 <?php render('Kasir', ob_get_clean(), 'bare');

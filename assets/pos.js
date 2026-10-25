@@ -15,14 +15,15 @@
   var form = $('#kp-form'), list = $('#kp-list');
   var cards = $$('.kp-card'), prod = {};
   cards.forEach(function (c) {
-    prod[c.dataset.id] = { id: c.dataset.id, nama: c.dataset.nama, kode: c.dataset.kode, harga: +c.dataset.harga, stok: +c.dataset.stok, el: c };
+    prod[c.dataset.id] = { id: c.dataset.id, nama: c.dataset.nama, kode: c.dataset.kode, harga: +c.dataset.harga, hp: c.dataset.hp === '' || c.dataset.hp == null ? null : +c.dataset.hp, stok: +c.dataset.stok, el: c };
   });
 
   var cart = {}, diskon = 0, santri = null, metode = 'tunai', kat = '', cari = '', tipe = 'umum';
   try { var m0 = localStorage.getItem('kp-metode'); if (m0 === 'qris' && qris.aktif) { metode = 'qris'; } if (m0 === 'tunai') { metode = 'tunai'; } } catch (x) {}
   if (metode === 'tunai' && qris.aktif && !localStorage.getItem('kp-metode')) { metode = 'qris'; }
 
-  function subtotal() { var t = 0; Object.keys(cart).forEach(function (id) { t += cart[id] * prod[id].harga; }); return t; }
+  function hrg(p) { return tipe === 'pegawai' && p.hp !== null ? p.hp : p.harga; }
+  function subtotal() { var t = 0; Object.keys(cart).forEach(function (id) { t += cart[id] * hrg(prod[id]); }); return t; }
   function jumlah() { var n = 0; Object.keys(cart).forEach(function (id) { n += cart[id]; }); return n; }
   function total() { return Math.max(0, subtotal() - diskon); }
 
@@ -54,9 +55,9 @@
     } else {
       list.innerHTML = ids.map(function (id) {
         var p = prod[id], q = cart[id];
-        return '<div class="kp-it" data-id="' + id + '"><div class="nm">' + esc(p.nama) + '<small>' + rp(p.harga) + '</small></div>' +
+        return '<div class="kp-it" data-id="' + id + '"><div class="nm">' + esc(p.nama) + '<small>' + rp(hrg(p)) + '</small></div>' +
           '<button type="button" class="stp" data-d="-1" aria-label="Kurangi">−</button><span class="q">' + q + '</span>' +
-          '<button type="button" class="stp" data-d="1" aria-label="Tambah">+</button><span class="tt">' + rp(p.harga * q) + '</span></div>';
+          '<button type="button" class="stp" data-d="1" aria-label="Tambah">+</button><span class="tt">' + rp(hrg(p) * q) + '</span></div>';
       }).join('');
     }
     var n = jumlah();
@@ -121,6 +122,7 @@
     if (c === 'santri') { bukaSantri(); return; }
     santri = null; tipe = c;
     if (metode === 'dompet') { metode = 'tunai'; }
+    cards.forEach(function (el) { var p = prod[el.dataset.id], pr = el.querySelector('.kp-pr'); if (pr) { pr.textContent = rp(hrg(p)); } });
     render();
     if (c === 'pegawai') { $('#in-pegawai').focus(); }
   });

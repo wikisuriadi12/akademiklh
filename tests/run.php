@@ -211,7 +211,45 @@ $idU = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'P
 ok('penjualan pegawai menyimpan nama pelanggan', Db::val('SELECT pelanggan FROM penjualan WHERE id = ?', [$idU]) === 'Pegawai: Budi');
 $idV = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Umum');
 ok('penjualan umum tanpa santri tersimpan', Db::val('SELECT pelanggan FROM penjualan WHERE id = ?', [$idV]) === 'Umum' && Db::val('SELECT santri_id FROM penjualan WHERE id = ?', [$idV]) === null);
+Db::exec('UPDATE barang SET harga_pegawai = 777 WHERE id = ?', [$b1]);
+$hj = (int) Db::val('SELECT harga_jual FROM barang WHERE id = ?', [$b1]);
+$idP = Pos::jual('ikhwan', null, [$b1 => 2], 'tunai', 1000000, null, null, 0, 'Pegawai: Ani');
+ok('pegawai dikenai harga pegawai', (int) Db::val('SELECT total FROM penjualan WHERE id = ?', [$idP]) === 1554);
+$idQ = Pos::jual('ikhwan', null, [$b1 => 1], 'tunai', 1000000, null, null, 0, 'Umum');
+ok('umum tetap harga umum', (int) Db::val('SELECT total FROM penjualan WHERE id = ?', [$idQ]) === $hj);
+Pos::batalkan($idP, 'uji', null, null); Pos::batalkan($idQ, 'uji', null, null);
+Db::exec('UPDATE barang SET harga_pegawai = NULL WHERE id = ?', [$b1]);
 Pos::batalkan($idU, 'uji', null, null); Pos::batalkan($idV, 'uji', null, null);
+// impor Excel master barang + stok
+$xl = Xlsx::tulis(['Master Barang' => array_merge([Gudang::IMPOR_HEADER], Gudang::templateContoh(), [['IMP-9', 'Barang Impor Uji', 'Uji', 'pak', '1.000', 'Rp 2.500', 'Rp 2.000', 3, 7, '']])]);
+$xf = sys_get_temp_dir() . '/uji-impor.xlsx'; file_put_contents($xf, $xl);
+$baca = Xlsx::baca($xf);
+ok('xlsx tulis lalu baca kembali', count($baca) === 5 && $baca[1][1] === 'Air Mineral 600 ml' && $baca[1][5] === '3500' && $baca[4][0] === 'IMP-9');
+$r1 = Gudang::imporBarang($baca, false, null);
+ok('impor xlsx sukses (4 baru)', $r1['ok'] && $r1['baru'] === 4);
+$iid = (int) Db::val("SELECT id FROM barang WHERE kode = 'IMP-9'");
+ok('impor harga dan stok gudang benar', (int) Db::val('SELECT harga_jual FROM barang WHERE id = ?', [$iid]) === 2500 && Gudang::stok($iid, Pos::GUDANG) === 7 && Gudang::stok($iid, Pos::TOKO) === 0);
+$kid = (int) Db::val("SELECT id FROM barang WHERE kode = 'KTN-001'");
+ok('stok market terisi tampil di kasir', Gudang::stok($kid, Pos::TOKO) === 24 && in_array($kid, array_map(static fn($x) => (int) $x['id'], Gudang::daftarMarket()), true));
+$r2 = Gudang::imporBarang($baca, false, null);
+ok('impor ulang tanpa perbarui ditolak semua', !$r2['ok'] && $r2['jumlah_galat'] === 4 && (int) Db::val('SELECT COUNT(*) FROM barang WHERE kode = ?', ['IMP-9']) === 1);
+$baca[4][5] = '3000'; $baca[4][8] = '2';
+$r3 = Gudang::imporBarang(array_slice($baca, 0, 1) + [1 => $baca[4]], true, null);
+ok('impor perbarui menimpa harga dan stok', $r3['ok'] && $r3['ubah'] === 1 && (int) Db::val('SELECT harga_jual FROM barang WHERE id = ?', [$iid]) === 3000 && Gudang::stok($iid, Pos::GUDANG) === 2);
+$salah = [Gudang::IMPOR_HEADER, ['', 'Tanpa kode', '', '', 'abc', '0', '', 'x', ''], ['OK-1', 'Valid', '', '', '', '1000', '', '5', '']];
+$r4 = Gudang::imporBarang($salah, false, null);
+ok('baris salah menggagalkan seluruh impor', !$r4['ok'] && (int) Db::val("SELECT COUNT(*) FROM barang WHERE kode = 'OK-1'") === 0);
+ok('header tanpa kolom wajib ditolak', !Gudang::imporBarang([['foo', 'bar'], ['1', '2']], false, null)['ok']);
+$csv = sys_get_temp_dir() . '/uji-impor.csv'; file_put_contents($csv, "\xEF\xBB\xBFKode Barang;Nama Barang;Harga Jual;Stok Market\nCSV-1;Barang CSV;4.500;9\n");
+$r5 = Gudang::imporBarang(Xlsx::bacaCsv($csv), false, null);
+$cid = (int) Db::val("SELECT id FROM barang WHERE kode = 'CSV-1'");
+ok('impor CSV titik koma dengan alias judul', $r5['ok'] && Gudang::stok($cid, Pos::TOKO) === 9);
+foreach (['IMP-9', 'CSV-1', 'KTN-001', 'KTN-002', 'ATK-001'] as $kd) {
+    $bid = (int) Db::val('SELECT id FROM barang WHERE kode = ?', [$kd]);
+    if ($bid) { Db::exec('DELETE FROM stok WHERE barang_id = ?', [$bid]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$bid]); Db::exec('DELETE FROM barang WHERE id = ?', [$bid]); }
+}
+@unlink($xf); @unlink($csv);
+
 // satu toko: gabung stok Akhwat ke LH Mart
 Gudang::ubah($b1, 'akhwat', 5, 'masuk', ['catatan' => 'uji gabung', 'user_id' => null]);
 $sebelum = Gudang::stok($b1, Pos::TOKO);

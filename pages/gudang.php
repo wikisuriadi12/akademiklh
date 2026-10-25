@@ -20,6 +20,7 @@ $jenis = count(Gudang::daftar($unit, '', false, true, $onlyMarket));
 ob_start(); ?>
 <div class="page-h"><div><h1>Stok <?= e(Pos::LOKASI[$unit]) ?></h1><p><?= $onlyMarket ? 'Barang yang tampil di kasir. Stok berkurang otomatis saat kasir menjual.' : 'Persediaan di gudang. Pindahkan ke Market lewat Transfer agar barang muncul di kasir.' ?></p></div>
   <div style="display:flex;gap:8px"><a class="btn ghost" href="?p=label"><?= icon('tag') ?> Cetak label</a>
+  <?php if ($edit): ?><a class="btn ghost" href="?p=impor_stok"><?= icon('upload') ?> Impor Excel</a><?php endif; ?>
   <?php if ($edit): ?><a class="btn" href="?p=barang"><?= icon('plus') ?> Barang baru</a><?php endif; ?></div></div>
 <?php if ($edit && $sisaAkhwat > 0): ?>
 <div class="card" style="margin-bottom:16px"><form method="post" class="inline"><?= csrf_field() ?><input type="hidden" name="aksi" value="gabung">

@@ -9,7 +9,7 @@ CREATE TABLE settings (k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE rate_limit (k TEXT PRIMARY KEY, n INT, started INT);
 CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INT, aksi TEXT, objek TEXT, objek_id INT, detail TEXT, created_at TEXT);
 
-CREATE TABLE barang (id INTEGER PRIMARY KEY AUTOINCREMENT, kode TEXT UNIQUE, nama TEXT, kategori TEXT DEFAULT '', satuan TEXT DEFAULT 'pcs', harga_beli INT DEFAULT 0, harga_jual INT DEFAULT 0, stok_min INT DEFAULT 0, aktif INT DEFAULT 1, created_at TEXT);
+CREATE TABLE barang (id INTEGER PRIMARY KEY AUTOINCREMENT, harga_pegawai INT, kode TEXT UNIQUE, nama TEXT, kategori TEXT DEFAULT '', satuan TEXT DEFAULT 'pcs', harga_beli INT DEFAULT 0, harga_jual INT DEFAULT 0, stok_min INT DEFAULT 0, aktif INT DEFAULT 1, created_at TEXT);
 CREATE TABLE stok (barang_id INT, unit TEXT, qty INT DEFAULT 0, PRIMARY KEY (barang_id, unit));
 CREATE TABLE stok_mutasi (id INTEGER PRIMARY KEY AUTOINCREMENT, barang_id INT, unit TEXT, tipe TEXT, qty INT, stok_setelah INT, harga_beli INT, pemasok TEXT DEFAULT '', ref_id INT, catatan TEXT DEFAULT '', user_id INT, created_at TEXT);
 CREATE TABLE dompet (santri_id INT PRIMARY KEY, saldo INT DEFAULT 0);

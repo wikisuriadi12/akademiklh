@@ -3,7 +3,7 @@ Auth::require('gudang.edit');
 $id = (int) in_str('id', '0');
 $b = $id ? Gudang::find($id) : null;
 if ($id && !$b) { redirect('?p=gudang'); }
-$val = $b ?: ['kode' => '', 'nama' => '', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 0, 'harga_jual' => 0, 'stok_min' => 5];
+$val = $b ?: ['kode' => '', 'nama' => '', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 0, 'harga_jual' => 0, 'harga_pegawai' => '', 'stok_min' => 5];
 $err = [];
 if (is_post()) {
     csrf_check();
@@ -33,7 +33,8 @@ ob_start(); ?>
   </fieldset>
   <fieldset><legend>Harga &amp; batas stok</legend>
     <label>Harga beli (modal) <input name="harga_beli" data-rupiah value="<?= $f('harga_beli') ?>" inputmode="numeric"></label>
-    <label>Harga jual <input name="harga_jual" data-rupiah value="<?= $f('harga_jual') ?>" inputmode="numeric" required><?= $er('harga_jual') ?></label>
+    <label>Harga jual umum <input name="harga_jual" data-rupiah value="<?= $f('harga_jual') ?>" inputmode="numeric" required><?= $er('harga_jual') ?></label>
+    <label>Harga pegawai / karyawan <input name="harga_pegawai" data-rupiah value="<?= $f('harga_pegawai') ?>" inputmode="numeric" placeholder="Kosong = sama dengan harga umum"><?= $er('harga_pegawai') ?></label>
     <label>Batas stok menipis <input name="stok_min" value="<?= $f('stok_min') ?>" inputmode="numeric"></label>
   </fieldset>
   <div class="acts"><button class="btn"><?= icon('check') ?> Simpan</button><a class="btn ghost" href="?p=gudang">Batal</a></div>
