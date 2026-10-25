@@ -165,5 +165,5 @@ ob_start(); ?>
   <ul class="kp-sl" id="sl-hasil"></ul>
   <div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Tutup</button></div>
 </div></dialog>
-<script src="assets/pos.js?v=5" defer></script>
+<script src="assets/pos.js?v=6" defer></script>
 <?php render('Kasir', ob_get_clean(), 'bare');

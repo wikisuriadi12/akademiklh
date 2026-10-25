@@ -107,7 +107,9 @@
     var v = q.value.trim().toLowerCase(); if (!v) { return; }
     var hit = cards.filter(function (c) { return c.dataset.kode.toLowerCase() === v && !c.disabled; })[0];
     if (!hit) { var vis = cards.filter(function (c) { return !c.hidden && !c.disabled; }); if (vis.length === 1) { hit = vis[0]; } }
-    if (hit) { tambah(hit.dataset.id, 1); q.value = ''; cari = ''; render(); } else { toast('Barang tidak ditemukan.'); }
+    if (hit) { tambah(hit.dataset.id, 1); q.value = ''; cari = ''; render(); return; }
+    var habis = cards.filter(function (c) { return c.disabled && (c.dataset.kode.toLowerCase() === v || c.dataset.cari.indexOf(v) !== -1); })[0];
+    toast(habis ? habis.dataset.nama + ' ada, tetapi stok Market 0. Isi stok lewat menu Market (Input stok / Tarik dari Gudang).' : 'Barang tidak ditemukan.');
   });
   $('#kp-chips').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) { return; }
