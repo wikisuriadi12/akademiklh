@@ -46,7 +46,7 @@ if (is_post()) {
         if ($ext === 'xlsx') { $rows = Xlsx::baca($f['tmp_name']); }
         elseif ($ext === 'csv') { $rows = Xlsx::bacaCsv($f['tmp_name']); }
         else { throw new InvalidArgumentException('Berkas harus berekstensi .xlsx atau .csv.'); }
-        $hasil = Gudang::imporBarang($rows, in_str('perbarui') === '1', Auth::id());
+        $hasil = Gudang::imporBarang($rows, in_str('perbarui') === '1', Auth::id(), in_str('stok_ke') === 'ikhwan' ? 'ikhwan' : 'gudang');
         if ($hasil['ok']) {
             flash($hasil['baru'] . ' barang baru, ' . $hasil['ubah'] . ' barang diperbarui.');
             redirect('?p=gudang&lok=gudang');
@@ -71,6 +71,7 @@ ob_start(); ?>
     <?= csrf_field() ?>
     <h2>Unggah berkas</h2>
     <label>Berkas Excel .xlsx atau CSV (maks. 3 MB, 1000 baris) <input type="file" name="berkas" accept=".xlsx,.csv" required></label>
+    <label>Kolom "Stok"/"Qty" dari sistem lama masuk ke <select name="stok_ke"><option value="gudang">Stok Gudang</option><option value="ikhwan">Stok Market</option></select></label>
     <label style="flex-direction:row;align-items:flex-start;gap:8px"><input type="checkbox" name="perbarui" value="1" style="width:auto;margin-top:4px"> <span><b>Perbarui barang yang kodenya sudah ada</b> (harga, kategori, dan stok yang diisi akan ditimpa).</span></label>
     <button class="btn"><?= icon('upload') ?> Impor sekarang</button>
     <p class="mut" style="font-size:.85rem;margin-bottom:0">Semua-atau-tidak-sama-sekali: bila ada satu baris bermasalah, tidak ada yang disimpan.</p>

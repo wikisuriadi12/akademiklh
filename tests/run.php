@@ -275,6 +275,23 @@ ok('daftarkan ke market', Gudang::daftarkanMarket($idBaru, null) === false && in
 Gudang::transfer($idBaru, Pos::GUDANG, Pos::TOKO, 4, '', null);
 ok('barang setelah transfer terbaca kasir', in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
 Db::exec('DELETE FROM stok WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM barang WHERE id = ?', [$idBaru]);
+// barang masuk banyak + supplier + laporan + impor kolom 'stok'
+$bm1 = Gudang::simpanBarang(['kode' => 'BM-1', 'nama' => 'Masuk Satu', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 100, 'harga_jual' => 200, 'stok_min' => 0], null, null);
+$bm2 = Gudang::simpanBarang(['kode' => 'BM-2', 'nama' => 'Masuk Dua', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 100, 'harga_jual' => 200, 'stok_min' => 0], null, null);
+throws('barang masuk tanpa supplier ditolak', fn() => Gudang::masukBanyak(Pos::GUDANG, '', '', [[$bm1, 5, 100]], null));
+throws('barang masuk tanpa item ditolak', fn() => Gudang::masukBanyak(Pos::GUDANG, 'CV Maju', '', [[0, 0, 0]], null));
+throws('barang masuk salah satu baris salah membatalkan semua', fn() => Gudang::masukBanyak(Pos::GUDANG, 'CV Maju', '', [[$bm1, 5, 100], [$bm2, 0, 100]], null));
+ok('tidak ada yang masuk saat gagal', Gudang::stok($bm1, Pos::GUDANG) === 0);
+ok('barang masuk banyak', Gudang::masukBanyak(Pos::GUDANG, 'CV Maju', 'Faktur 1', [[$bm1, 5, 150], [$bm2, 7, 0]], null) === 2 && Gudang::stok($bm1, Pos::GUDANG) === 5 && Gudang::stok($bm2, Pos::GUDANG) === 7);
+ok('harga beli diperbarui dari barang masuk', (int) Db::val('SELECT harga_beli FROM barang WHERE id = ?', [$bm1]) === 150 && (int) Db::val('SELECT harga_beli FROM barang WHERE id = ?', [$bm2]) === 100);
+$lm = Gudang::laporanMasuk(date('Y-m-d'), date('Y-m-d'), '', 'CV Maju');
+ok('laporan barang masuk per supplier', count($lm) === 2 && $lm[0]['pemasok'] === 'CV Maju' && in_array('CV Maju', Gudang::daftarPemasok(), true));
+$sx = [['Kode Barang', 'Nama Produk', 'Harga', 'Stok'], ['OLD-1', 'Barang Sistem Lama', '5000', '12']];
+$rx = Gudang::imporBarang($sx, false, null, 'ikhwan');
+ok('impor sistem lama: kolom stok ke Market', $rx['ok'] && Gudang::stok((int) Db::val("SELECT id FROM barang WHERE kode='OLD-1'"), Pos::TOKO) === 12);
+$ry = Gudang::imporBarang([['Kode', 'Nama', 'Harga Jual', 'Stok'], ['OLD-2', 'Lama Dua', '6000', '4']], false, null);
+ok('impor sistem lama: kolom stok ke Gudang bawaan', $ry['ok'] && Gudang::stok((int) Db::val("SELECT id FROM barang WHERE kode='OLD-2'"), Pos::GUDANG) === 4);
+foreach ([$bm1, $bm2, (int) Db::val("SELECT id FROM barang WHERE kode='OLD-1'"), (int) Db::val("SELECT id FROM barang WHERE kode='OLD-2'")] as $zid) { Db::exec('DELETE FROM stok WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$zid]); Db::exec('DELETE FROM barang WHERE id = ?', [$zid]); }
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }

@@ -32,16 +32,17 @@ final class Gudang
     {
         $h = strtolower(trim(preg_replace('/[^a-z0-9]+/i', ' ', $h)));
         $peta = [
-            'kode' => ['kode', 'kode barang', 'sku', 'barcode'],
-            'nama' => ['nama', 'nama barang', 'barang'],
-            'kategori' => ['kategori', 'jenis'],
-            'satuan' => ['satuan', 'unit'],
-            'harga_beli' => ['harga beli', 'harga modal', 'modal', 'hpp'],
+            'kode' => ['kode', 'kode barang', 'sku', 'barcode', 'kode item', 'kode produk', 'id barang'],
+            'nama' => ['nama', 'nama barang', 'barang', 'nama item', 'nama produk', 'produk', 'item'],
+            'kategori' => ['kategori', 'jenis', 'golongan', 'group', 'grup'],
+            'satuan' => ['satuan', 'unit', 'sat'],
+            'harga_beli' => ['harga beli', 'harga modal', 'modal', 'hpp', 'harga pokok', 'harga beli satuan', 'hb'],
             'harga_jual' => ['harga jual', 'harga', 'harga satuan', 'harga umum', 'harga jual umum'],
             'harga_pegawai' => ['harga pegawai', 'harga karyawan', 'harga staff', 'harga staf', 'harga jual pegawai', 'harga jual karyawan'],
             'stok_min' => ['stok min', 'stok minimum', 'batas stok', 'min stok'],
             'stok_gudang' => ['stok gudang', 'gudang', 'qty gudang'],
-            'stok_market' => ['stok market', 'market', 'stok toko', 'qty market'],
+            'stok_market' => ['stok market', 'market', 'stok toko', 'qty market', 'toko'],
+            'stok_umum' => ['stok', 'qty', 'jumlah', 'jumlah stok', 'stock', 'sisa stok', 'saldo stok'],
         ];
         foreach ($peta as $k => $alias) { if (in_array($h, $alias, true)) { return $k; } }
         return null;
@@ -51,7 +52,7 @@ final class Gudang
      * Impor master barang + stok awal dari baris Excel/CSV. Semua-atau-tidak-sama-sekali.
      * Stok gudang/market diisi sebagai jumlah akhir (selisih dicatat sebagai mutasi). Kolom stok kosong = tidak diubah.
      */
-    public static function imporBarang(array $rows, bool $perbarui, ?int $userId): array
+    public static function imporBarang(array $rows, bool $perbarui, ?int $userId, string $stokKe = 'gudang'): array
     {
         $hasil = ['ok' => false, 'errors' => [], 'baru' => 0, 'ubah' => 0, 'jumlah_galat' => 0];
         if (count($rows) < 2) { $hasil['errors'][] = 'Berkas kosong atau hanya berisi judul kolom.'; return $hasil; }
@@ -78,7 +79,9 @@ final class Gudang
             $pesan = array_values($err);
             foreach (['harga_beli', 'harga_jual', 'harga_pegawai', 'stok_min'] as $k) { if ($in[$k] !== '' && $angka($in[$k]) === -1) { $pesan[] = "$k harus angka bulat"; } }
             $st = [];
-            foreach (['stok_gudang' => Pos::GUDANG, 'stok_market' => Pos::TOKO] as $k => $lok) {
+            $umumLok = $stokKe === 'ikhwan' ? Pos::TOKO : Pos::GUDANG;
+            foreach (['stok_gudang' => Pos::GUDANG, 'stok_market' => Pos::TOKO, 'stok_umum' => $umumLok] as $k => $lok) {
+                if ($k === 'stok_umum' && (isset($kolom['stok_gudang']) || isset($kolom['stok_market']))) { continue; }
                 $v = $angka($ambil($r, $k));
                 if ($v === -1) { $pesan[] = "$k harus angka bulat 0 atau lebih"; } elseif ($v !== null) { $st[$lok] = $v; }
             }
@@ -176,6 +179,43 @@ final class Gudang
         Db::exec('INSERT INTO stok (barang_id, unit, qty) VALUES (?,?,0)', [$barangId, Pos::TOKO]);
         Db::audit($userId, 'daftar_market', 'stok', $barangId);
         return true;
+    }
+
+    /** Catat barang masuk dari beberapa item sekaligus (satu pemasok), all-or-nothing. @param array<int,array{0:int,1:int,2:int}> $baris [barang_id, qty, harga_beli] */
+    public static function masukBanyak(string $unit, string $pemasok, string $catatan, array $baris, ?int $userId): int
+    {
+        self::cekUnit($unit, null);
+        $pemasok = trim($pemasok);
+        if ($pemasok === '') { throw new InvalidArgumentException('Nama supplier wajib diisi.'); }
+        $baris = array_values(array_filter($baris, static fn($b) => (int) $b[0] > 0 || (int) $b[1] > 0));
+        if (!$baris) { throw new InvalidArgumentException('Isi minimal satu barang.'); }
+        foreach ($baris as $i => $b) {
+            if ((int) $b[0] <= 0 || !self::find((int) $b[0])) { throw new InvalidArgumentException('Baris ' . ($i + 1) . ': pilih barang.'); }
+            if ((int) $b[1] < 1 || (int) $b[1] > 1000000) { throw new InvalidArgumentException('Baris ' . ($i + 1) . ': jumlah harus 1 atau lebih.'); }
+        }
+        Db::transaction(function () use ($unit, $pemasok, $catatan, $baris, $userId) {
+            foreach ($baris as $b) {
+                [$id, $qty, $hb] = [(int) $b[0], (int) $b[1], (int) $b[2]];
+                self::ubah($id, $unit, $qty, 'masuk', ['harga_beli' => $hb, 'pemasok' => mb_substr($pemasok, 0, 100), 'catatan' => $catatan, 'user_id' => $userId]);
+                if ($hb > 0) { Db::exec('UPDATE barang SET harga_beli = ? WHERE id = ?', [$hb, $id]); }
+            }
+            Db::audit($userId, 'masuk', 'stok', null, "$unit " . count($baris) . ' item dari ' . $pemasok);
+        });
+        return count($baris);
+    }
+
+    public static function daftarPemasok(): array
+    {
+        return array_column(Db::all("SELECT DISTINCT pemasok FROM stok_mutasi WHERE pemasok <> '' ORDER BY pemasok"), 'pemasok');
+    }
+
+    /** Laporan barang masuk (mutasi tipe masuk) pada rentang tanggal. */
+    public static function laporanMasuk(string $dari, string $sampai, string $unit = '', string $pemasok = ''): array
+    {
+        $w = "m.tipe = 'masuk' AND m.created_at >= ? AND m.created_at <= ?"; $p = [$dari . ' 00:00:00', $sampai . ' 23:59:59'];
+        if ($unit !== '') { $w .= ' AND m.unit = ?'; $p[] = $unit; }
+        if ($pemasok !== '') { $w .= ' AND m.pemasok = ?'; $p[] = $pemasok; }
+        return Db::all("SELECT m.created_at, m.unit, m.pemasok, m.qty, m.harga_beli, m.catatan, b.kode, b.nama, b.satuan, u.nama AS petugas FROM stok_mutasi m JOIN barang b ON b.id = m.barang_id LEFT JOIN users u ON u.id = m.user_id WHERE $w ORDER BY m.id DESC LIMIT 1000", $p);
     }
 
     /** Barang master aktif yang belum diambil ke Stok Market. */
