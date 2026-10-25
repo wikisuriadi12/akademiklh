@@ -64,3 +64,5 @@ SELECT
   id AS `ID`
 FROM santri;
 CREATE TABLE prestasi (id INTEGER PRIMARY KEY AUTOINCREMENT, santri_id INT, jenis TEXT, nama TEXT, tahun INT, sertifikat TEXT, created_by INT, created_at TEXT);
+
+CREATE TABLE qris_trx (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT UNIQUE, provider TEXT, jumlah INT, status TEXT DEFAULT 'menunggu', qr_url TEXT, penjualan_id INT, user_id INT, created_at TEXT, paid_at TEXT);

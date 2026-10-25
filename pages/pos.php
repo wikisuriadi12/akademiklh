@@ -12,12 +12,16 @@ if (is_post()) {
         foreach ((array) ($_POST['qty'] ?? []) as $bid => $q) { $items[(int) $bid] = (int) $q; }
         $dibayar = (int) preg_replace('/\D/', '', in_str('dibayar', '0'));
         $diskon = (int) preg_replace('/\D/', '', in_str('diskon', '0'));
-        $bukti = null;
-        if (in_str('metode') === 'qris') {
+        $bukti = null; $qrisRef = in_str('qris_ref');
+        if (in_str('metode') === 'qris' && $qrisRef !== '') {
+            QrisApi::periksaUntukJual($qrisRef, Pos::hitung($items, in_str('pelanggan'), $sidP > 0, $diskon));
+        } elseif (in_str('metode') === 'qris') {
+            if (QrisApi::siap()) { throw new InvalidArgumentException('Gunakan QR dinamis yang ditampilkan kasir.'); }
             if (in_str('qris_ok') !== '1') { throw new InvalidArgumentException('Centang konfirmasi bahwa notifikasi pembayaran QRIS sudah masuk dan nominalnya sesuai.'); }
             $bukti = BuktiQris::siapkan($_FILES['bukti'] ?? null);
         }
         $id = Pos::jual($unit, $sidP ?: null, $items, in_str('metode'), $dibayar, Auth::id(), $scope, $diskon, in_str('pelanggan'));
+        if ($qrisRef !== '' && in_str('metode') === 'qris') { QrisApi::pakai($qrisRef, $id); }
         if ($bukti !== null) { try { BuktiQris::simpan($id, $bukti); } catch (Throwable $ex) { flash('Penjualan tersimpan, tetapi foto bukti gagal disimpan: ' . $ex->getMessage(), 'err'); redirect('?p=struk&id=' . $id); } }
         flash('Penjualan tersimpan.');
         redirect('?p=struk&id=' . $id);
@@ -53,12 +57,15 @@ $nada = static function (string $kat): string {
     return $set[crc32($k) % count($set)];
 };
 
-$qrisOn = Qris::aktif();
+$qrisOn = Qris::aktif() || QrisApi::siap();
 $cfg = [
     'unit' => $unit,
     'pesanan' => $noPesanan,
-    'qris' => ['aktif' => $qrisOn, 'img' => $qrisOn ? Qris::url() : '', 'nama' => Settings::get('qris_nama'), 'nmid' => Settings::get('qris_nmid')],
+    'qris' => ['dinamis' => QrisApi::siap(), 'simulasi' => QrisApi::provider() === 'simulasi' && Auth::can('users'), 'aktif' => $qrisOn || QrisApi::siap(), 'img' => $qrisOn ? Qris::url() : '', 'nama' => Settings::get('qris_nama'), 'nmid' => Settings::get('qris_nmid')],
     'cari' => '?p=pos_cari',
+    'qrisBuat' => '?p=qris_buat',
+    'qrisStatus' => '?p=qris_status',
+    'csrf' => csrf_token(),
 ];
 $rail = [
     ['?p=pos', 'Kasir', 'grid', true, true],
@@ -129,6 +136,7 @@ ob_start(); ?>
       <input type="hidden" name="diskon" id="f-diskon" value="0">
       <input type="hidden" name="dibayar" id="f-dibayar" value="0">
       <input type="hidden" name="qris_ok" id="f-qris" value="0">
+      <input type="hidden" name="qris_ref" id="f-qref" value="">
       <input type="hidden" name="pelanggan" id="f-pelanggan" value="Umum">
       <input type="file" name="bukti" id="f-bukti" accept="image/*" capture="environment" hidden>
       <div id="f-items"></div>
@@ -171,5 +179,5 @@ ob_start(); ?>
   <ul class="kp-sl" id="sl-hasil"></ul>
   <div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Tutup</button></div>
 </div></dialog>
-<script src="assets/pos.js?v=7" defer></script>
+<script src="assets/pos.js?v=8" defer></script>
 <?php render('Kasir', ob_get_clean(), 'bare');

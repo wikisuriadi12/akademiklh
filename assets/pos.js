@@ -200,6 +200,35 @@
       u.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !ok.disabled) { ok.click(); } });
       ok.addEventListener('click', function () { kirim({ dibayar: digits(u.value) }); });
       buka(db); u.focus();
+    } else if (metode === 'qris' && qris.dinamis) {
+      dbb.innerHTML = '<div class="kp-qrbox"><h3>Bayar dengan QRIS</h3><p class="sub" id="dq-sub">Membuat QR...</p><div id="dq-img"></div><div class="kp-big">' + rp(t) + '</div><p class="sub" id="dq-st">Menyiapkan pembayaran...</p></div>' +
+        '<div class="kp-dact"><button type="button" class="kp-btn ghost" data-tutup>Batal</button>' + (qris.simulasi ? '<button type="button" class="kp-btn ghost" id="dq-sim" disabled>Simulasikan lunas</button>' : '') + '</div>';
+      buka(db);
+      var fd = new FormData();
+      fd.append('_csrf', cfg.csrf); fd.append('diskon', diskon); fd.append('santri_id', santri ? santri.id : '');
+      fd.append('pelanggan', santri ? '' : (tipe === 'pegawai' ? 'Pegawai' : 'Umum'));
+      Object.keys(cart).forEach(function (id) { fd.append('qty[' + id + ']', cart[id]); });
+      var st = $('#dq-st', dbb), ref = null;
+      stopPoll();
+      fetch(cfg.qrisBuat, { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          if (!x.ok || !x.j.ok) { $('#dq-sub', dbb).textContent = ''; st.textContent = (x.j && x.j.error) || 'Gagal membuat QR.'; return; }
+          ref = x.j.ref;
+          $('#dq-sub', dbb).textContent = x.j.provider === 'simulasi' ? 'Mode simulasi (tidak ada uang sungguhan)' : 'Scan dengan aplikasi bank / e-wallet';
+          var src = x.j.qr_url || qris.img || '';
+          if (src) { $('#dq-img', dbb).innerHTML = '<img src="' + esc(src) + '" alt="QRIS" style="max-width:240px">'; }
+          st.textContent = 'Menunggu pembayaran...';
+          var sim = $('#dq-sim', dbb);
+          if (sim) { sim.disabled = false; sim.addEventListener('click', function () { var f2 = new FormData(); f2.append('_csrf', cfg.csrf); f2.append('simulasi', '1'); fetch(cfg.qrisStatus + '&ref=' + encodeURIComponent(ref), { method: 'POST', body: f2, credentials: 'same-origin' }); }); }
+          pollT = setInterval(function () {
+            fetch(cfg.qrisStatus + '&ref=' + encodeURIComponent(ref), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+              if (j.status === 'lunas') { stopPoll(); st.textContent = 'Pembayaran diterima. Menyimpan...'; kirim({ qris: 1, ref: ref }); }
+              else if (j.status === 'kedaluwarsa' || j.status === 'gagal') { stopPoll(); st.textContent = 'QR ' + (j.status === 'gagal' ? 'gagal/ditolak' : 'kedaluwarsa') + '. Tutup lalu coba lagi.'; }
+            }).catch(function () {});
+          }, 3000);
+        }).catch(function () { st.textContent = 'Gagal menghubungi server.'; });
+      db.addEventListener('close', stopPoll, { once: true });
     } else if (metode === 'qris') {
       dbb.innerHTML = '<div class="kp-qrbox"><h3>Bayar dengan BNI QRIS</h3><p class="sub">' + esc(qris.nama || '') + (qris.nmid ? ' · NMID ' + esc(qris.nmid) : '') + '</p>' +
         (qris.img ? '<img src="' + esc(qris.img) + '" alt="QRIS">' : '') +
@@ -232,6 +261,9 @@
     }
   });
 
+  var pollT = null;
+  function stopPoll() { if (pollT) { clearInterval(pollT); pollT = null; } }
+
   function kirim(x) {
     $('#f-metode').value = metode;
     $('#f-diskon').value = diskon;
@@ -240,6 +272,7 @@
     $('#f-pelanggan').value = santri ? '' : (tipe === 'pegawai' ? 'Pegawai' + (nm ? ': ' + nm : '') : 'Umum');
     $('#f-dibayar').value = x.dibayar || 0;
     $('#f-qris').value = x.qris ? 1 : 0;
+    $('#f-qref').value = x.ref || '';
     if (metode !== 'qris') { try { $('#f-bukti').value = ''; } catch (e) {} }
     $('#f-items').innerHTML = Object.keys(cart).map(function (id) { return '<input type="hidden" name="qty[' + id + ']" value="' + cart[id] + '">'; }).join('');
     form.submit();

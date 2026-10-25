@@ -21,6 +21,12 @@ final class Settings
         'qris_nama' => 'LH MART MBL',
         'qris_nmid' => 'ID1026561527429',
         'qris_gambar' => '',
+        'qris_api_provider' => '',
+        'qris_api_mode' => 'sandbox',
+        'qris_api_url' => '',
+        'qris_api_id' => '',
+        'qris_api_secret' => '',
+        'qris_api_token' => '',
         'raport_url' => '',
     ];
 

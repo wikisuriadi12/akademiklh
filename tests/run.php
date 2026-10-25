@@ -306,6 +306,44 @@ $nmBq = BuktiQris::simpan($idBq, $bin);
 ok('bukti qris tersimpan dan terhubung ke penjualan', BuktiQris::jalur($nmBq) !== null && Db::val('SELECT bukti_qris FROM penjualan WHERE id = ?', [$idBq]) === $nmBq);
 Pos::batalkan($idBq, 'uji', null, null);
 foreach (glob($bq . '/*') ?: [] as $zf) { @unlink($zf); } foreach (glob($bq . '/.htaccess') ?: [] as $zf) { @unlink($zf); } @rmdir($bq); @unlink($png);
+// QRIS dinamis
+$enc = QrisApi::segel('rahasia-uji-123');
+ok('rahasia API terenkripsi dan bisa dibuka', strpos($enc, 'rahasia') === false && QrisApi::buka($enc) === 'rahasia-uji-123' && QrisApi::buka('enc1:rusak') === '');
+ok('QRIS dinamis nonaktif bila belum diatur', !QrisApi::siap());
+Settings::set('qris_api_provider', 'bni'); ok('bni belum berjalan (adapter menunggu)', !QrisApi::siap());
+Settings::set('qris_api_provider', 'simulasi');
+ok('simulasi siap', QrisApi::siap());
+$tq = QrisApi::mulai(7000, null);
+ok('transaksi dinamis menunggu', QrisApi::status($tq['ref']) === 'menunggu');
+throws('belum lunas tidak bisa dipakai jual', fn() => QrisApi::periksaUntukJual($tq['ref'], 7000));
+ok('simulasi lunas', QrisApi::simulasiLunas($tq['ref']) && QrisApi::status($tq['ref']) === 'lunas');
+throws('nominal beda ditolak', fn() => QrisApi::periksaUntukJual($tq['ref'], 7001));
+QrisApi::periksaUntukJual($tq['ref'], 7000); QrisApi::pakai($tq['ref'], 1);
+throws('QRIS tidak bisa dipakai dua kali', fn() => QrisApi::periksaUntukJual($tq['ref'], 7000));
+$hit = Pos::hitung([$b1 => 2], 'Umum', false, 0);
+ok('Pos::hitung sama dengan harga jual', $hit === 2 * (int) Db::val('SELECT harga_jual FROM barang WHERE id = ?', [$b1]));
+Settings::set('qris_api_provider', 'midtrans'); Settings::set('qris_api_secret', QrisApi::segel('SB-Mid-server-uji'));
+$kirimLog = [];
+QrisApi::$http = function ($m, $u, $h, $b) use (&$kirimLog) {
+    $kirimLog[] = [$m, $u, $h, $b];
+    if ($m === 'POST') { return [200, json_encode(['status_code' => '201', 'transaction_status' => 'pending', 'actions' => [['name' => 'generate-qr-code', 'url' => 'https://api.sandbox.midtrans.com/v2/qris/x/qr-code']]])]; }
+    return [200, json_encode(['transaction_status' => 'settlement', 'gross_amount' => '5000.00'])];
+};
+$tm = QrisApi::mulai(5000, null);
+ok('midtrans: QR dibuat dengan basic auth & nominal', $tm['qr_url'] !== null && strpos($kirimLog[0][1], 'api.sandbox.midtrans.com/v2/charge') !== false && in_array('Authorization: Basic ' . base64_encode('SB-Mid-server-uji:'), $kirimLog[0][2], true) && json_decode($kirimLog[0][3], true)['transaction_details']['gross_amount'] === 5000);
+ok('midtrans: polling status lunas', QrisApi::status($tm['ref']) === 'lunas');
+$tm2 = QrisApi::mulai(6000, null);
+$tm3 = QrisApi::mulai(4000, null);
+QrisApi::$http = fn() => [200, json_encode(['transaction_status' => 'settlement', 'gross_amount' => '1000.00'])];
+ok('midtrans: nominal tidak cocok jadi gagal', QrisApi::status($tm2['ref']) === 'gagal');
+QrisApi::$http = fn() => [200, json_encode(['transaction_status' => 'pending'])];
+$cb = ['order_id' => $tm3['ref'], 'status_code' => '200', 'gross_amount' => '4000.00', 'transaction_status' => 'settlement'];
+[$k1] = QrisApi::callback(json_encode($cb + ['signature_key' => 'salah']));
+ok('callback tanda tangan salah ditolak', $k1 === 403 && QrisApi::status($tm3['ref']) === 'menunggu');
+[$k2] = QrisApi::callback(json_encode($cb + ['signature_key' => hash('sha512', $tm3['ref'] . '200' . '4000.00' . 'SB-Mid-server-uji')]));
+QrisApi::$http = fn() => [200, json_encode(['transaction_status' => 'pending'])];
+ok('callback sah menandai lunas', $k2 === 200 && QrisApi::status($tm3['ref']) === 'lunas');
+QrisApi::$http = null; Settings::set('qris_api_provider', ''); Settings::set('qris_api_secret', '');
 // santri unit mana pun boleh belanja di satu toko
 $sa = (int) Db::val("SELECT id FROM santri WHERE unit = 'akhwat' LIMIT 1");
 if ($sa) { Pos::topup($sa, 50000, 'uji', null, null); $ids = Pos::jual(Pos::TOKO, $sa, [$b1 => 1], 'dompet', 0, null, null); ok('santri akhwat bisa belanja di toko', (int) $ids > 0); Pos::batalkan($ids, 'uji', null, null); }

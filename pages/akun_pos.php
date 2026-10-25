@@ -7,6 +7,23 @@ if (is_post()) {
     try {
         $aksi = in_str('aksi');
         $uid = (int) in_str('uid');
+        if ($aksi === 'qris_api') {
+            $pv = in_str('provider');
+            if (!isset(QrisApi::PENYEDIA[$pv])) { throw new InvalidArgumentException('Penyedia tidak dikenal.'); }
+            Settings::set('qris_api_provider', $pv);
+            Settings::set('qris_api_mode', in_str('mode') === 'produksi' ? 'produksi' : 'sandbox');
+            $url = trim(in_str('url'));
+            if ($url !== '' && !preg_match('#^https://[A-Za-z0-9.-]+(:\d+)?(/[^\s]*)?$#', $url)) { throw new InvalidArgumentException('Alamat API harus diawali https://'); }
+            Settings::set('qris_api_url', $url);
+            Settings::set('qris_api_id', mb_substr(trim(in_str('merchant_id')), 0, 100));
+            $rahasia = trim(in_str('secret'));
+            if ($rahasia !== '') { Settings::set('qris_api_secret', QrisApi::segel($rahasia)); }
+            if (in_str('hapus_secret') === '1') { Settings::set('qris_api_secret', ''); }
+            if (QrisApi::token() === '' || in_str('token_baru') === '1') { Settings::set('qris_api_token', bin2hex(random_bytes(16))); }
+            Db::audit(Auth::id(), 'ubah', 'pengaturan', null, 'qris api ' . ($pv ?: 'nonaktif'));
+            flash('Pengaturan QRIS dinamis disimpan. ' . QrisApi::pesanStatus());
+            redirect('?p=akun_pos');
+        }
         if ($aksi === 'qris_bawaan') {
             $b = APP_ROOT . '/assets/qris-bawaan/lh-mart.png';
             if (!is_file($b)) { throw new InvalidArgumentException('Berkas QR bawaan tidak ada di server. Unggah gambar QR manual.'); }
@@ -106,6 +123,20 @@ ob_start(); ?>
     <label>Password awal (min. 10 karakter) <input type="password" name="password" required minlength="10"></label>
   </fieldset>
   <button class="btn"><?= icon('plus') ?> Tambah</button>
+</form>
+<form method="post" class="card form" autocomplete="off" style="margin-top:16px"><?= csrf_field() ?><input type="hidden" name="aksi" value="qris_api">
+  <h2>QRIS dinamis (API bank / gateway)</h2>
+  <p class="mut full" style="margin:0 0 6px"><b>Status:</b> <?= e(QrisApi::pesanStatus()) ?></p>
+  <label>Penyedia <select name="provider"><?= options(QrisApi::PENYEDIA, QrisApi::provider()) ?></select></label>
+  <label>Mode <select name="mode"><?= options(['sandbox' => 'Sandbox (uji)', 'produksi' => 'Produksi'], QrisApi::mode()) ?></select></label>
+  <label>Alamat API (kosongkan untuk bawaan penyedia) <input name="url" value="<?= e(Settings::get('qris_api_url')) ?>" placeholder="https://..." maxlength="200"></label>
+  <label>Merchant ID / Client ID <input name="merchant_id" value="<?= e(QrisApi::idMerchant()) ?>" maxlength="100"></label>
+  <label class="full">Server Key / Secret API <input type="password" name="secret" autocomplete="new-password" placeholder="<?= QrisApi::adaSecret() ? 'Tersimpan (terenkripsi). Isi hanya bila ingin mengganti.' : 'Belum diisi' ?>" maxlength="200"></label>
+  <?php if (QrisApi::adaSecret()): ?><label class="chk full"><input type="checkbox" name="hapus_secret" value="1"> Hapus rahasia tersimpan</label><?php endif; ?>
+  <div class="full"><small>Alamat callback untuk didaftarkan di dasbor penyedia:<br><code><?= e((($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off' ? 'https' : 'https') . '://' . ($_SERVER['HTTP_HOST'] ?? 'DOMAIN-ANDA') . '/?p=qris_callback&k=' . QrisApi::token()) ?></code></small></div>
+  <label class="chk full"><input type="checkbox" name="token_baru" value="1"> Buat token callback baru</label>
+  <small>Rahasia disimpan terenkripsi di database dan tidak pernah ditampilkan lagi. Jangan kirim kunci ke chat. Bila penyedia aktif, kasir menampilkan QR dengan nominal pas dan transaksi selesai otomatis saat dibayar; QRIS statis dan foto bukti dipakai lagi bila dinonaktifkan.</small>
+  <button class="btn" style="margin-top:12px"><?= icon('check') ?> Simpan QRIS dinamis</button>
 </form>
 <form method="post" class="card form" style="margin-top:16px"><?= csrf_field() ?><input type="hidden" name="aksi" value="qris_bawaan">
   <h2>Aktifkan QRIS LH MART MBL</h2>

@@ -92,7 +92,7 @@ final class Pos
         if (!isset(Domain::UNIT[$unit])) { throw new InvalidArgumentException('Unit tidak valid.'); }
         if ($scope !== null && $scope !== $unit) { throw new InvalidArgumentException('Unit di luar cakupan akun Anda.'); }
         if (!in_array($metode, ['tunai', 'dompet', 'qris'], true)) { throw new InvalidArgumentException('Metode pembayaran tidak valid.'); }
-        if ($metode === 'qris' && !Qris::aktif()) { throw new InvalidArgumentException('Pembayaran QRIS belum diaktifkan di Pengaturan.'); }
+        if ($metode === 'qris' && !Qris::aktif() && !QrisApi::siap()) { throw new InvalidArgumentException('Pembayaran QRIS belum diaktifkan di Pengaturan.'); }
         $items = array_filter($items, static fn($q) => (int) $q > 0);
         if (!$items) { throw new InvalidArgumentException('Belum ada barang yang dipilih.'); }
         if ($metode === 'dompet') {
@@ -140,6 +140,21 @@ final class Pos
             Db::audit($userId, 'jual', 'penjualan', $id, "$no $unit $metode $total" . ($diskon > 0 ? " diskon $diskon" : ''));
             return $id;
         });
+    }
+
+    /** Total akhir (setelah harga pegawai & diskon) untuk keranjang; dipakai server sebelum membuat QRIS dinamis. */
+    public static function hitung(array $items, ?string $pelanggan, bool $santri, int $diskon): int
+    {
+        $hp = !$santri && $pelanggan !== null && stripos(trim($pelanggan), 'Pegawai') === 0;
+        $total = 0;
+        foreach (array_filter($items, static fn($q) => (int) $q > 0) as $bid => $qty) {
+            $b = Gudang::find((int) $bid);
+            if (!$b || !(int) $b['aktif']) { throw new InvalidArgumentException('Ada barang yang tidak tersedia.'); }
+            $total += (int) $qty * ($hp && ($b['harga_pegawai'] ?? null) !== null ? (int) $b['harga_pegawai'] : (int) $b['harga_jual']);
+        }
+        if ($total <= 0) { throw new InvalidArgumentException('Belum ada barang yang dipilih.'); }
+        if ($diskon < 0 || $diskon > $total) { throw new InvalidArgumentException('Diskon tidak valid.'); }
+        return $total - $diskon;
     }
 
     public static function find(int $id): ?array
