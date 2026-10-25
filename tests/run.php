@@ -265,6 +265,8 @@ $gBaru = (int) Db::val("SELECT COALESCE(MAX(id),0)+1 FROM barang");
 $idBaru = Gudang::simpanBarang(['kode' => 'ZZ-GDG', 'nama' => 'Barang hanya gudang', 'kategori' => '', 'satuan' => 'pcs', 'harga_beli' => 100, 'harga_jual' => 200, 'stok_min' => 0], null, null);
 Gudang::masuk($idBaru, Pos::GUDANG, 10, 100, '', '', null, null);
 ok('barang hanya di gudang tidak terbaca kasir', !in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
+throws('transfer ke market ditolak bila item belum ada di stok market', fn() => Gudang::transfer($idBaru, Pos::GUDANG, Pos::TOKO, 4, '', null));
+Gudang::masuk($idBaru, Pos::TOKO, 1, 100, '', '', null, null);
 Gudang::transfer($idBaru, Pos::GUDANG, Pos::TOKO, 4, '', null);
 ok('barang setelah transfer terbaca kasir', in_array($idBaru, array_map(static fn($r) => (int) $r['id'], Gudang::daftarMarket()), true));
 Db::exec('DELETE FROM stok WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM stok_mutasi WHERE barang_id = ?', [$idBaru]); Db::exec('DELETE FROM barang WHERE id = ?', [$idBaru]);

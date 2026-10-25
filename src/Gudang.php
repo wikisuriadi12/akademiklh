@@ -205,6 +205,9 @@ final class Gudang
         if (!isset(Pos::LOKASI[$dari]) || !isset(Pos::LOKASI[$ke]) || $dari === $ke) { throw new InvalidArgumentException('Lokasi asal dan tujuan harus berbeda.'); }
         if ($qty <= 0) { throw new InvalidArgumentException('Jumlah transfer harus lebih dari 0.'); }
         if (!self::find($barangId)) { throw new InvalidArgumentException('Barang tidak ditemukan.'); }
+        if ($ke === Pos::TOKO && !Db::val('SELECT 1 FROM stok WHERE barang_id = ? AND unit = ?', [$barangId, Pos::TOKO])) {
+            throw new InvalidArgumentException('Barang belum terdaftar di stok Market. Tambahkan dulu item ini lewat Stok Market (barang masuk), baru bisa ditransfer dari Gudang.');
+        }
         Db::transaction(function () use ($barangId, $dari, $ke, $qty, $catatan, $userId) {
             $cat = trim($catatan) !== '' ? $catatan : (Pos::LOKASI[$dari] . ' ke ' . Pos::LOKASI[$ke]);
             self::ubah($barangId, $dari, -$qty, 'transfer_keluar', ['catatan' => $cat, 'user_id' => $userId]);
