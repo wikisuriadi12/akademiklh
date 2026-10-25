@@ -18,6 +18,15 @@ if (is_post() && in_str('aksi') === 'ambil' && $edit) {
     flash($n > 0 ? $n . ' item diambil ke Stok Market. Isi stoknya lewat Barang masuk atau Transfer dari Gudang.' : 'Tidak ada item yang dipilih.', $n > 0 ? 'ok' : 'warn');
     redirect('?p=gudang&lok=ikhwan');
 }
+if (is_post() && in_str('aksi') === 'tarik' && $edit) {
+    csrf_check();
+    try {
+        $bid = (int) in_str('id', '0'); $qty = (int) preg_replace('/\D/', '', in_str('qty', '0'));
+        Gudang::transfer($bid, Pos::GUDANG, Pos::TOKO, $qty, 'Tarik dari Gudang', Auth::id());
+        flash($qty . ' pcs ditarik dari Gudang ke Market. Barang siap dijual di kasir.');
+    } catch (InvalidArgumentException $ex) { flash($ex->getMessage(), 'err'); }
+    redirect('?p=gudang&lok=ikhwan');
+}
 $belum = $edit && $unit === Pos::TOKO ? Gudang::belumDiMarket() : [];
 $sisaAkhwat = (int) Db::val('SELECT COUNT(*) FROM stok WHERE unit = ? AND qty > 0', ['akhwat']);
 $onlyMarket = $unit === Pos::TOKO;
@@ -59,7 +68,7 @@ ob_start(); ?>
     <button class="btn"><?= icon('search') ?> Tampilkan</button>
   </form>
   <div class="scroll"><table class="rt">
-    <thead><tr><th>Barang</th><th>Kategori</th><th class="r">Harga jual</th><th class="r">Stok</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Barang</th><th>Kategori</th><th class="r">Harga jual</th><th class="r">Stok</th><?php if ($onlyMarket && $edit): ?><th class="r">Stok Gudang</th><th>Tarik dari Gudang</th><?php endif; ?><th>Status</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($rows as $b):
         $habis = (int) $b['qty'] <= 0; $tipis = (int) $b['qty'] <= (int) $b['stok_min']; ?>
@@ -68,11 +77,15 @@ ob_start(); ?>
         <td data-label="Kategori"><?= e($b['kategori'] ?: '-') ?></td>
         <td class="r" data-label="Harga jual"><?= rp($b['harga_jual']) ?></td>
         <td class="r" data-label="Stok"><b><?= (int) $b['qty'] ?></b> <?= e($b['satuan']) ?></td>
+        <?php if ($onlyMarket && $edit): $sg = Gudang::stok((int) $b['id'], Pos::GUDANG); ?>
+        <td class="r" data-label="Stok Gudang"><b><?= $sg ?></b></td>
+        <td data-label="Tarik"><?php if ($sg > 0): ?><form method="post" class="inline" style="display:flex;gap:6px"><?= csrf_field() ?><input type="hidden" name="aksi" value="tarik"><input type="hidden" name="id" value="<?= (int) $b['id'] ?>"><input name="qty" inputmode="numeric" placeholder="Jumlah" style="width:84px" required><button class="btn sm">Tarik</button></form><?php else: ?><small class="mut">Gudang kosong</small><?php endif; ?></td>
+        <?php endif; ?>
         <td data-label="Status"><?php if (!(int) $b['aktif']): ?><span class="badge">Nonaktif</span><?php elseif ($habis): ?><span class="badge b-belum">Habis</span><?php elseif ($tipis): ?><span class="badge b-sebagian">Menipis</span><?php else: ?><span class="badge b-lunas">Aman</span><?php endif; ?></td>
         <td class="r"><a class="btn sm ghost" href="?p=gudang_item&amp;id=<?= (int) $b['id'] ?>&amp;lok=<?= e($unit) ?>"><?= $edit ? 'Kelola' : 'Detail' ?></a></td>
       </tr>
     <?php endforeach; ?>
-    <?php if (!$rows): ?><tr><td colspan="6" class="empty">Belum ada barang<?= $edit ? '. Klik "Barang baru" untuk menambah.' : '.' ?></td></tr><?php endif; ?>
+    <?php if (!$rows): ?><tr><td colspan="8" class="empty">Belum ada barang<?= $edit ? '. Klik "Barang baru" untuk menambah.' : '.' ?></td></tr><?php endif; ?>
     </tbody>
   </table></div>
 </div>
