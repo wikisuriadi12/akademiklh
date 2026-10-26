@@ -149,6 +149,7 @@ ob_start(); ?>
     <?php elseif ($tab === 'stok'): ?><select name="lok"><?= options(Pos::LOKASI, $stokLok) ?></select><select name="stokf"><?= options(['' => 'Semua barang', 'ada' => 'Ada stok', 'menipis' => 'Menipis', 'habis' => 'Habis'], $f['stokf']) ?></select>
     <?php elseif ($tab === 'mutasi'): ?><select name="tipe"><option value="">Semua jenis</option><?= options($tipeNama, $f['tipe']) ?></select><?php endif; ?>
     <button class="btn"><?= icon('search') ?> Tampilkan</button></form>
+  <?php if ($tab === 'stok'): ?><p class="mut">Tampilan lengkap tersedia di menu <a href="?p=laporan_stok">Laporan Stok LH Mart</a>.</p><?php endif; ?>
   <?php if ($kpi): ?><div class="kpis"><?php foreach ($kpi as [$lb, $nilai, $ic, $cls]): ?><div class="kpi"><div class="chip <?= e($cls) ?>"><?= icon($ic, 22) ?></div><div><span><?= e($lb) ?></span><b><?= e($nilai) ?></b></div></div><?php endforeach; ?></div><?php endif; ?>
   <?= $extra ?>
   <div class="scroll"><table class="rt"><thead><tr><?php foreach ($kolom as $lb => $j): ?><th class="<?= in_array($j, ['n', 'rp'], true) ? 'r' : '' ?>"><?= e($lb) ?></th><?php endforeach; ?><?= $aksiBaris ? '<th></th>' : '' ?></tr></thead><tbody>
