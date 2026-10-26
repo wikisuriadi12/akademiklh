@@ -58,7 +58,7 @@ final class Gudang
         if (count($rows) < 2) { $hasil['errors'][] = 'Berkas kosong atau hanya berisi judul kolom.'; return $hasil; }
         $kolom = [];
         foreach ($rows[0] as $i => $h) { $k = self::kunciHeader((string) $h); if ($k !== null && !isset($kolom[$k])) { $kolom[$k] = $i; } }
-        foreach (['kode', 'nama', 'harga_jual'] as $wajib) {
+        foreach (['nama', 'harga_jual'] as $wajib) {
             if (!isset($kolom[$wajib])) { $hasil['errors'][] = "Kolom wajib '$wajib' tidak ditemukan di baris judul."; }
         }
         if ($hasil['errors']) { $hasil['jumlah_galat'] = count($hasil['errors']); return $hasil; }
@@ -85,8 +85,10 @@ final class Gudang
                 $v = $angka($ambil($r, $k));
                 if ($v === -1) { $pesan[] = "$k harus angka bulat 0 atau lebih"; } elseif ($v !== null) { $st[$lok] = $v; }
             }
-            if (isset($dobel[$c['kode']])) { $pesan[] = 'kode ' . $c['kode'] . ' dobel dengan baris ' . $dobel[$c['kode']]; }
-            $dobel[$c['kode']] = $baris;
+            if ($c['kode'] !== '') {
+                if (isset($dobel[$c['kode']])) { $pesan[] = 'kode ' . $c['kode'] . ' dobel dengan baris ' . $dobel[$c['kode']]; }
+                $dobel[$c['kode']] = $baris;
+            }
             $ada = $c['kode'] !== '' ? Db::one('SELECT id FROM barang WHERE kode = ?', [$c['kode']]) : null;
             if ($ada && !$perbarui) { $pesan[] = 'kode ' . $c['kode'] . ' sudah ada (centang "Perbarui barang yang sudah ada" bila ingin menimpa)'; }
             if ($pesan) { $hasil['errors'][] = "Baris $baris: " . implode('; ', $pesan); continue; }
@@ -125,7 +127,7 @@ final class Gudang
         $err = [];
         $kode = strtoupper(trim((string) ($in['kode'] ?? '')));
         $nama = trim((string) ($in['nama'] ?? ''));
-        if (!preg_match('/^[A-Z0-9._-]{2,30}$/', $kode)) { $err['kode'] = 'Kode 2-30 karakter: huruf, angka, titik, strip.'; }
+        if ($kode !== '' && !preg_match('/^[A-Z0-9._-]{2,30}$/', $kode)) { $err['kode'] = 'Kode 2-30 karakter: huruf, angka, titik, strip.'; }
         if ($nama === '' || mb_strlen($nama) > 120) { $err['nama'] = 'Nama barang wajib diisi (maks. 120 karakter).'; }
         $num = static fn(string $k): int => (int) preg_replace('/\D/', '', (string) ($in[$k] ?? '0'));
         $beli = $num('harga_beli'); $jual = $num('harga_jual'); $min = $num('stok_min');
@@ -145,8 +147,28 @@ final class Gudang
         return Db::one('SELECT * FROM barang WHERE id = ?', [$id]);
     }
 
+    public const KODE_AWAL = 'LH';
+
+    /** Kode barang otomatis berurutan: LH000001, LH000002, ... (lanjut dari angka tertinggi yang sudah ada). */
+    public static function kodeBerikut(): string
+    {
+        $maks = 0;
+        foreach (Db::all("SELECT kode FROM barang WHERE kode LIKE ?", [self::KODE_AWAL . '%']) as $r) {
+            if (preg_match('/^' . self::KODE_AWAL . '(\d{1,9})$/', (string) $r['kode'], $m)) { $maks = max($maks, (int) $m[1]); }
+        }
+        do {
+            $maks++;
+            $kode = self::KODE_AWAL . str_pad((string) $maks, 6, '0', STR_PAD_LEFT);
+        } while (Db::one('SELECT id FROM barang WHERE kode = ?', [$kode]));
+        return $kode;
+    }
+
     public static function simpanBarang(array $c, ?int $id, ?int $userId): int
     {
+        if (($c['kode'] ?? '') === '') {
+            if ($id) { $c['kode'] = (string) Db::val('SELECT kode FROM barang WHERE id = ?', [$id]); }
+            else { $c['kode'] = self::kodeBerikut(); }
+        }
         $dup = Db::val('SELECT id FROM barang WHERE kode = ?' . ($id ? ' AND id <> ?' : ''), $id ? [$c['kode'], $id] : [$c['kode']]);
         if ($dup) { throw new InvalidArgumentException('Kode barang sudah dipakai.'); }
         if ($id) {

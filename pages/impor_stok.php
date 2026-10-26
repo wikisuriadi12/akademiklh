@@ -12,7 +12,7 @@ function unduh_xlsx(string $nama, string $bin): void
 }
 $petunjuk = [
     ['Kolom', 'Wajib?', 'Keterangan'],
-    ['kode', 'Ya', 'Kode unik barang (huruf/angka/titik/strip, 2-30 karakter). Juga dipakai sebagai barcode label.'],
+    ['kode', 'Tidak', 'Kode/barcode unik barang (huruf/angka/titik/strip, 2-30 karakter). Kosongkan bila barang belum punya barcode: sistem membuat otomatis berurutan (LH000001, LH000002, ...).'],
     ['nama', 'Ya', 'Nama barang, maks. 120 karakter.'],
     ['kategori', 'Tidak', 'Contoh: Kantin, Alat Tulis, Perlengkapan.'],
     ['satuan', 'Tidak', 'Contoh: pcs, pak, botol. Kosong = pcs.'],
@@ -79,7 +79,7 @@ ob_start(); ?>
   <div class="card">
     <h2>Format kolom</h2>
     <ul class="list" style="font-size:.88rem">
-      <li><span class="sp"><b>Wajib:</b> kode, nama, harga_jual</span></li>
+      <li><span class="sp"><b>Wajib:</b> nama, harga_jual (kode boleh kosong = dibuat otomatis)</span></li>
       <li><span class="sp"><b>Opsional:</b> kategori, satuan, harga_beli, stok_min</span></li>
       <li><span class="sp"><b>Stok:</b> stok_gudang dan stok_market berisi jumlah akhir. Kosong berarti tidak diubah. Barang tampil di kasir hanya bila punya stok Market.</span></li>
       <li><span class="sp">Gunakan <b>Template Excel</b> (sudah ada contoh dan lembar Petunjuk), atau <b>Ekspor data saat ini</b> untuk menyunting barang yang sudah ada.</span></li>

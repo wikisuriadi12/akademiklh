@@ -27,7 +27,7 @@ ob_start(); ?>
 <form method="post" class="card form" autocomplete="off">
   <?= csrf_field() ?>
   <fieldset><legend>Data barang</legend>
-    <label>Kode <input name="kode" value="<?= $f('kode') ?>" required style="text-transform:uppercase"><?= $er('kode') ?></label>
+    <label>Kode <input name="kode" value="<?= $f('kode') ?>" <?= $id ? 'required' : 'placeholder="Kosongkan = dibuat otomatis (' . e(Gudang::kodeBerikut()) . ')"' ?> style="text-transform:uppercase"><?= $er('kode') ?></label>
     <label>Nama barang <input name="nama" value="<?= $f('nama') ?>" required><?= $er('nama') ?></label>
     <label>Kategori <input name="kategori" value="<?= $f('kategori') ?>" list="kat" placeholder="Alat tulis, Makanan, Sabun..."></label>
     <datalist id="kat"><?php foreach (Gudang::kategori() as $k): ?><option value="<?= e($k) ?>"><?php endforeach; ?></datalist>

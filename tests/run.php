@@ -181,6 +181,12 @@ ok('initials', initials('Muhammad Fatih') === 'MF');
 // ---------- V3: gudang, POS, dompet ----------
 [$cb] = Gudang::validateBarang(['kode' => 'ab-1', 'nama' => 'Pulpen', 'kategori' => 'ATK', 'satuan' => '', 'harga_beli' => '1.500', 'harga_jual' => '2.500', 'stok_min' => '5']);
 ok('barang: kode jadi kapital, harga diparse, satuan bawaan', $cb['kode'] === 'AB-1' && $cb['harga_jual'] === 2500 && $cb['satuan'] === 'pcs');
+[$ck] = Gudang::validateBarang(['kode' => '', 'nama' => 'Tanpa Kode', 'harga_jual' => '1000']);
+$k1 = Gudang::simpanBarang($ck, null, null); $k2 = Gudang::simpanBarang($ck, null, null);
+ok('barang tanpa kode: dibuat otomatis berurutan', Gudang::find($k1)['kode'] === 'LH000001' && Gudang::find($k2)['kode'] === 'LH000002');
+$ri = Gudang::imporBarang([['kode','nama','harga_jual'],['','Impor A','1000'],['','Impor B','2000']], false, null);
+ok('impor tanpa kode: lanjut urutan', $ri['ok'] && Db::val("SELECT COUNT(*) FROM barang WHERE kode IN ('LH000003','LH000004')") == 2);
+Db::exec("DELETE FROM barang WHERE kode LIKE 'LH0000%'");
 [, $eb] = Gudang::validateBarang(['kode' => '!', 'nama' => '', 'harga_jual' => '0']);
 ok('barang: validasi gagal', count($eb) === 3);
 $b1 = Gudang::simpanBarang($cb, null, null);
