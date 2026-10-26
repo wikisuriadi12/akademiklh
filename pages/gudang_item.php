@@ -42,8 +42,8 @@ ob_start(); ?>
 <div class="tabs"><?php foreach (Pos::LOKASI as $k => $v): ?><a class="<?= $unit === $k ? 'on' : '' ?>" href="?p=gudang_item&amp;id=<?= $id ?>&amp;lok=<?= e($k) ?>">Stok <?= e($v) ?></a><?php endforeach; ?></div>
 <div class="kpis">
   <div class="kpi"><div class="chip"><?= icon('box', 22) ?></div><div><span>Stok <?= e(Pos::LOKASI[$unit]) ?></span><b><?= $stok ?> <?= e($b['satuan']) ?></b></div></div>
-  <div class="kpi"><div class="chip c-info"><?= icon('tag', 22) ?></div><div><span>Harga jual / beli</span><b><?= rp($b['harga_jual']) ?></b><small class="mut">modal <?= rp($b['harga_beli']) ?></small></div></div>
-  <div class="kpi"><div class="chip c-ok"><?= icon('trending-up', 22) ?></div><div><span>Laba per satuan</span><b><?= rp($margin) ?></b></div></div>
+  <div class="kpi"><div class="chip c-info"><?= icon('tag', 22) ?></div><div><span><?= Auth::can('harga_beli') ? 'Harga jual / beli' : 'Harga jual' ?></span><b><?= rp($b['harga_jual']) ?></b><?php if (Auth::can('harga_beli')): ?><small class="mut">modal <?= rp($b['harga_beli']) ?></small><?php endif; ?></div></div>
+  <?php if (Auth::can('harga_beli')): ?><div class="kpi"><div class="chip c-ok"><?= icon('trending-up', 22) ?></div><div><span>Laba per satuan</span><b><?= rp($margin) ?></b></div></div><?php endif; ?>
 </div>
 <?php if ($edit): ?>
 <?php $adaMarket = (bool) Db::val('SELECT 1 FROM stok WHERE barang_id = ? AND unit = ?', [$id, Pos::TOKO]); ?>

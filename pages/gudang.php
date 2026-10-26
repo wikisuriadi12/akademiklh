@@ -68,7 +68,7 @@ ob_start(); ?>
 <div class="kpis">
   <div class="kpi"><div class="chip"><?= icon('box', 22) ?></div><div><span>Jenis barang aktif</span><b><?= (int) $jenis ?></b></div></div>
   <div class="kpi"><div class="chip c-acc"><?= icon('alert', 22) ?></div><div><span>Stok menipis / habis</span><b><?= (int) $nRendah ?></b></div></div>
-  <div class="kpi"><div class="chip c-ok"><?= icon('wallet', 22) ?></div><div><span>Nilai persediaan (modal)</span><b><?= rp($nilai) ?></b></div></div>
+  <?php if (Auth::can('harga_beli')): ?><div class="kpi"><div class="chip c-ok"><?= icon('wallet', 22) ?></div><div><span>Nilai persediaan (modal)</span><b><?= rp($nilai) ?></b></div></div><?php endif; ?>
 </div>
 <div class="card">
   <form method="get" class="filters"><input type="hidden" name="p" value="gudang"><input type="hidden" name="lok" value="<?= e($unit) ?>">

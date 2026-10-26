@@ -13,6 +13,7 @@ $post = isset($argv[3]) ? $argv[3] : '';
 
 test_db();
 seed_demo();
+if (getenv('ROLE')) { Db::exec('UPDATE users SET role = ? WHERE id = 1', [getenv('ROLE')]); }
 // Placeholder: {NIS:3} = NIS santri id 3; {HP4:3} = 4 digit terakhir HP wali santri id 3.
 $post = preg_replace_callback('/\{(NIS|HP4):(\d+)\}/', static function ($m) {
     $s = Santri::find((int) $m[2]);

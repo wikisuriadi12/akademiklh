@@ -19,7 +19,7 @@ foreach ($hari as $d => $v) { $lbl[substr($d, 8) . '/' . substr($d, 5, 2)] = $v;
 $topMap = [];
 foreach ($top as $t) { $topMap[$t['nama']] = (int) $t['qty']; }
 ob_start(); ?>
-<div class="page-h"><div><h1>Penjualan Koperasi</h1><p>Riwayat transaksi kasir, omzet, dan laba kotor.</p></div>
+<div class="page-h"><div><h1>Penjualan Koperasi</h1><p>Riwayat transaksi kasir<?= Auth::can('harga_beli') ? ', omzet, dan laba kotor' : ' dan omzet' ?>.</p></div>
   <div class="acts"><a class="btn ghost" href="?<?= e(http_build_query(['p' => 'penjualan', 'dari' => $dari, 'sampai' => $sampai, 'unit' => $unit, 'metode' => $metode, 'csv' => 1])) ?>"><?= icon('download') ?> Ekspor CSV</a><?php if (Auth::can('pos')): ?><a class="btn" href="?p=pos"><?= icon('cart') ?> Ke kasir</a><?php endif; ?></div></div>
 <div class="card">
   <form method="get" class="filters"><input type="hidden" name="p" value="penjualan">
@@ -30,7 +30,7 @@ ob_start(); ?>
   <div class="kpis" style="margin-bottom:0">
     <div class="kpi"><div class="chip"><?= icon('receipt', 22) ?></div><div><span>Transaksi</span><b><?= $rk['n'] ?></b></div></div>
     <div class="kpi"><div class="chip c-ok"><?= icon('wallet', 22) ?></div><div><span>Omzet</span><b><?= rp($rk['omzet']) ?></b></div></div>
-    <div class="kpi"><div class="chip c-info"><?= icon('trending-up', 22) ?></div><div><span>Laba kotor</span><b><?= rp($rk['laba']) ?></b></div></div>
+    <?php if (Auth::can('harga_beli')): ?><div class="kpi"><div class="chip c-info"><?= icon('trending-up', 22) ?></div><div><span>Laba kotor</span><b><?= rp($rk['laba']) ?></b></div></div><?php endif; ?>
   </div>
 </div>
 <div class="grid g2" style="margin-bottom:16px">

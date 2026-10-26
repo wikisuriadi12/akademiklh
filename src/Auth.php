@@ -22,6 +22,7 @@ final class Auth
         'pos' => ['admin', 'kasir'],
         'gudang.view' => ['admin', 'gudang', 'kasir', 'pimpinan'],
         'gudang.edit' => ['admin', 'gudang'],
+        'harga_beli' => ['admin', 'gudang', 'bendahara', 'pimpinan'], // kasir tidak boleh melihat modal/laba
         'dompet' => ['admin', 'kasir', 'bendahara'],
         'dompet.koreksi' => ['admin', 'bendahara'],
         'tahfidz.view' => ['admin', 'ustadz', 'pembina', 'pimpinan', 'tu'],

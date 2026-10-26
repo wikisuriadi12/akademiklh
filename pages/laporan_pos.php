@@ -3,7 +3,8 @@ $bolehJual = Auth::can('penjualan'); $bolehStok = Auth::can('gudang.view');
 if (!$bolehJual && !$bolehStok) { Auth::require('penjualan'); }
 $tabs = [];
 if ($bolehJual) { $tabs += ['ringkasan' => 'Ringkasan', 'penjualan' => 'Transaksi', 'produk' => 'Per Produk', 'kategori' => 'Per Kategori', 'pelanggan' => 'Per Pelanggan', 'hutang' => 'Pembelian Hutang', 'kasir' => 'Per Kasir']; }
-if ($bolehStok) { $tabs += ['masuk' => 'Barang Masuk', 'stok' => 'Posisi Stok', 'mutasi' => 'Mutasi Stok']; }
+$lihatBeli = Auth::can('harga_beli');
+if ($bolehStok) { $tabs += ($lihatBeli ? ['masuk' => 'Barang Masuk'] : []) + ['stok' => 'Posisi Stok', 'mutasi' => 'Mutasi Stok']; }
 $tab = isset($tabs[in_str('tab')]) ? in_str('tab') : array_key_first($tabs);
 $dari = Domain::validDate(in_str('dari')) ? in_str('dari') : date('Y-m-01');
 $sampai = Domain::validDate(in_str('sampai')) ? in_str('sampai') : date('Y-m-d');
@@ -13,7 +14,7 @@ $jenisNama = ['umum' => 'Umum', 'pegawai' => 'Pegawai', 'santri' => 'Santri'];
 $tipeNama = ['transfer_masuk' => 'Transfer masuk', 'transfer_keluar' => 'Transfer keluar', 'opname' => 'Opname / koreksi', 'keluar' => 'Keluar (rusak/hilang)'];
 $lokNama = Pos::LOKASI;
 $f = ['metode' => in_str('metode'), 'jenis' => in_str('jenis'), 'kasir' => (int) in_str('kasir', '0'), 'status' => in_array(in_str('status'), ['sah', 'batal', 'semua'], true) ? in_str('status') : 'sah',
-    'urut' => in_array(in_str('urut'), ['qty', 'omzet', 'laba'], true) ? in_str('urut') : 'qty', 'lok' => isset(Pos::LOKASI[in_str('lok')]) ? in_str('lok') : '', 'pemasok' => in_str('pemasok'),
+    'urut' => in_array(in_str('urut'), $lihatBeli ? ['qty', 'omzet', 'laba'] : ['qty', 'omzet'], true) ? in_str('urut') : 'qty', 'lok' => isset(Pos::LOKASI[in_str('lok')]) ? in_str('lok') : '', 'pemasok' => in_str('pemasok'),
     'stokf' => in_array(in_str('stokf'), ['', 'habis', 'menipis', 'ada'], true) ? in_str('stokf') : '', 'tipe' => isset($tipeNama[in_str('tipe')]) ? in_str('tipe') : ''];
 $stokLok = $f['lok'] !== '' ? $f['lok'] : Pos::TOKO;
 
@@ -22,8 +23,9 @@ $judul = $tabs[$tab]; $kolom = []; $baris = []; $kpi = []; $extra = ''; $aksiBar
 switch ($tab) {
     case 'ringkasan':
         $r = LaporanPos::ringkasan($dari, $sampai);
-        $kpi = [['Transaksi', (string) $r['n'], 'receipt', ''], ['Omzet', rp($r['omzet']), 'wallet', 'c-ok'], ['Laba kotor', rp($r['laba']), 'trending-up', 'c-info'], ['Rata-rata per transaksi', rp($r['rata']), 'tag', ''],
+        $kpi = [['Transaksi', (string) $r['n'], 'receipt', ''], ['Omzet', rp($r['omzet']), 'wallet', 'c-ok'], ['Rata-rata per transaksi', rp($r['rata']), 'tag', ''],
             ['Barang terjual', (string) $r['qty'], 'box', ''], ['Diskon diberikan', rp($r['diskon']), 'tag', 'c-acc'], ['Transaksi dibatalkan', $r['batal_n'] . ' (' . rp($r['batal_nilai']) . ')', 'alert', 'c-acc']];
+        if ($lihatBeli) { array_splice($kpi, 2, 0, [['Laba kotor', rp($r['laba']), 'trending-up', 'c-info']]); }
         $hari = LaporanPos::perHari($dari, $sampai);
         $grafik = [];
         foreach ($hari as $d => $v) { $grafik[substr($d, 8) . '/' . substr($d, 5, 2)] = $v['omzet']; }
@@ -122,6 +124,16 @@ switch ($tab) {
         foreach ($rows as $x) { $baris[] = [substr((string) $x['created_at'], 0, 16), $tipeNama[$x['tipe']] ?? $x['tipe'], $lokNama[$x['unit']] ?? $x['unit'], $x['kode'], $x['nama'], (int) $x['qty'], (int) $x['stok_setelah'], $x['catatan'] ?: '-', $x['petugas'] ?: '-']; }
         break;
 }
+if (!$lihatBeli) {
+    $buang = array_keys(array_intersect_key(array_flip(array_keys($kolom)), array_flip(['Laba kotor', 'Nilai modal', 'Harga beli'])));
+    $idx = [];
+    foreach (array_keys($kolom) as $i => $lb) { if (in_array($lb, $buang, true)) { $idx[] = $i; } }
+    if ($idx) {
+        $kolom = array_diff_key($kolom, array_flip($buang));
+        $baris = array_map(static fn($b) => array_values(array_diff_key($b, array_flip($idx))), $baris);
+        $kpi = array_values(array_filter($kpi, static fn($k) => !in_array($k[0], ['Nilai modal'], true)));
+    }
+}
 $nKol = count($kolom);
 if (in_str('csv') === '1') {
     csv_out('laporan-' . $tab . '-' . $dari . '-' . $sampai . '.csv', array_keys($kolom), array_map(static fn($b) => array_slice($b, 0, $nKol), $baris));
@@ -143,7 +155,7 @@ ob_start(); ?>
       <select name="jenis"><option value="">Semua pelanggan</option><?= options($jenisNama, $f['jenis']) ?></select>
       <select name="kasir"><option value="0">Semua kasir</option><?php foreach ($kasirList as $k): ?><option value="<?= (int) $k['id'] ?>" <?= $f['kasir'] === (int) $k['id'] ? 'selected' : '' ?>><?= e($k['nama']) ?></option><?php endforeach; ?></select>
       <select name="status"><?= options(['sah' => 'Hanya sah', 'batal' => 'Hanya batal', 'semua' => 'Semua'], $f['status']) ?></select>
-    <?php elseif ($tab === 'produk'): ?><select name="urut"><?= options(['qty' => 'Urut jumlah terjual', 'omzet' => 'Urut omzet', 'laba' => 'Urut laba'], $f['urut']) ?></select>
+    <?php elseif ($tab === 'produk'): ?><select name="urut"><?= options(['qty' => 'Urut jumlah terjual', 'omzet' => 'Urut omzet'] + ($lihatBeli ? ['laba' => 'Urut laba'] : []), $f['urut']) ?></select>
     <?php elseif ($tab === 'masuk'): ?><select name="lok"><option value="">Semua lokasi</option><?= options(Pos::LOKASI, $f['lok']) ?></select>
       <select name="pemasok"><option value="">Semua supplier</option><?php foreach (Gudang::daftarPemasok() as $p): ?><option <?= $p === $f['pemasok'] ? 'selected' : '' ?>><?= e($p) ?></option><?php endforeach; ?></select>
     <?php elseif ($tab === 'stok'): ?><select name="lok"><?= options(Pos::LOKASI, $stokLok) ?></select><select name="stokf"><?= options(['' => 'Semua barang', 'ada' => 'Ada stok', 'menipis' => 'Menipis', 'habis' => 'Habis'], $f['stokf']) ?></select>
