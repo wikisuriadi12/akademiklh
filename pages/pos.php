@@ -101,7 +101,7 @@ ob_start(); ?>
       <div><h1>Kasir</h1><p><?= e($koperasi) ?> &middot; <?= e($tanggal) ?></p></div>
     </header>
 
-    <?php if (!$barang): ?><div class="note warn" style="margin:0 0 12px">Belum ada barang di stok Market. Buka menu Stok, pilih barangnya, lalu Transfer stok dari Gudang ke Market.</div><?php endif; ?>
+    <?php if (!$barang): ?><div class="note warn" style="margin:0 0 12px">Belum ada barang di stok Market. Buka menu Stok Gudang &amp; Market (tab Market), klik &quot;Ambil item dari Master&quot;, lalu isi stoknya lewat &quot;Input stok Market&quot; atau &quot;Tarik dari Gudang&quot;. Barang yang stoknya 0 tampil abu-abu dan tidak bisa dipilih.</div><?php endif; ?>
     <label class="kp-search"><?= icon('search', 20) ?><input type="search" id="kp-q" placeholder="Cari nama barang, SKU, atau pindai barcode" autocomplete="off" autofocus></label>
 
     <div class="kp-chips" id="kp-chips">
