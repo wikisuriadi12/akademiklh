@@ -1,8 +1,0 @@
----
-# Deploy otomatis cPanel (Git Version Control > Deploy HEAD Commit).
-# Menyalin kode ke aplikasi akademik. config.php, storage/, dan unggahan TIDAK ditimpa/dihapus (tanpa --delete).
-deployment:
-  tasks:
-    - export DEPLOYPATH=/home/yayas183/akademiklh_app/
-    - /bin/mkdir -p $DEPLOYPATH
-    - /usr/bin/rsync -rlt --exclude='.git' --exclude='.cpanel.yml' --exclude='tests' --exclude='README.md' --exclude='config.php' --exclude='storage' ./ $DEPLOYPATH

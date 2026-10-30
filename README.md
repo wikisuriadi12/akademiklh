@@ -76,10 +76,12 @@ Data contoh di `tests/seed.php` hanya untuk uji, bukan data asli.
 ## Catatan
 Kode POS (LH Mart & Gudang) dipisah ke repositori `Poin-Of-Sales-LH` dan dipasang ke cPanel dari sana. Repositori ini khusus sistem akademik.
 
-## Alur kerja: edit di GitHub, deploy ke cPanel
+## Alur kerja: edit di GitHub, perbarui cPanel
+
+Repositori cPanel `akademiklh` berada langsung di folder aplikasi (`/home/yayas183/akademiklh_app`), jadi tidak perlu `.cpanel.yml`.
 
 1. Edit kode di GitHub (cabang `main`, atau lewat Pull Request lalu merge).
-2. cPanel > Git Version Control > repositori `akademiklh` > **Pull or Deploy** > **Update from Remote**, lalu **Deploy HEAD Commit**.
-3. `.cpanel.yml` menyalin berkas ke `/home/yayas183/akademiklh_app/` tanpa menimpa `config.php` dan `storage/`.
+2. cPanel > Git Version Control > repositori `akademiklh` > **Pull or Deploy** > **Update from Remote**.
+3. `config.php`, `config_google_drive.php`, dan `storage/` ada di `.gitignore`, jadi tidak tertimpa.
 4. Bila rilis menambah migrasi database, buka menu **Periksa Database** sebagai admin lalu klik **Perbarui database sekarang**.
-5. Jangan edit langsung di File Manager cPanel: edit itu akan tertimpa saat deploy berikutnya.
+5. Jangan edit langsung di File Manager cPanel: pohon kerja server yang berbeda dari GitHub membuat Update from Remote gagal.
