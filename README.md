@@ -73,9 +73,5 @@ Upgrade dari V1: impor ulang `schema.sql` pada database baru (tabel baru: `jenis
 
 Data contoh di `tests/seed.php` hanya untuk uji, bukan data asli.
 
-## Alur kerja: edit di GitHub, deploy ke cPanel
-
-1. Edit kode di GitHub (cabang `main`, atau lewat Pull Request lalu merge).
-2. cPanel > Git Version Control > repositori `akademiklh` > **Pull or Deploy** > **Update from Remote**, lalu **Deploy HEAD Commit**.
-3. `.cpanel.yml` menyalin berkas ke `/home/yayas183/poslh_app/` tanpa menimpa `config.php` dan `storage/`.
-4. Bila rilis menambah migrasi database, buka menu **Periksa Database** sebagai admin lalu klik **Perbarui database sekarang**.
+## Catatan
+Kode POS (LH Mart & Gudang) dipisah ke repositori `Poin-Of-Sales-LH` dan dipasang ke cPanel dari sana. Repositori ini khusus sistem akademik.
