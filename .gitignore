@@ -3,3 +3,4 @@ config.php
 .DS_Store
 assets/qris/
 storage/
+config_google_drive.php

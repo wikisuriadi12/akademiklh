@@ -1,9 +1,234 @@
 <?php
 Auth::require('santri.view');
+require_once APP_ROOT . '/src/GoogleDriveLH.php';
+$adminDrive = (Auth::user()['role'] ?? '') === 'admin';
+if (in_str('tab') === 'google_callback') {
+    if (!$adminDrive) { http_response_code(403); exit('Hanya admin yang dapat menghubungkan Google Drive.'); }
+    try {
+        $sidDrive = GoogleDriveLH::callback(in_str('code'), in_str('state'), (int) Auth::id(), in_str('error'));
+        redirect('?p=santri_detail&id=' . $sidDrive . '&tab=berkas');
+    } catch (InvalidArgumentException $ex) {
+        render('Koneksi Google Drive', '<div class="card"><h1>Koneksi belum berhasil</h1><p>' . e($ex->getMessage()) . '</p><a href="?p=santri">Kembali ke Data Santri</a></div>');
+    }
+    exit;
+}
+
 $id = (int) in_str('id', '0');
 $s = $id ? Santri::find($id) : null;
 if (!$s) { http_response_code(404); render('Tidak ditemukan', '<div class="card"><div class="empty">Santri tidak ditemukan.</div></div>'); exit; }
 Auth::assertUnit($s['unit']);
+// Tampilan berkas memakai route detail yang sudah tersedia, tanpa route baru.
+if (in_str('tab') === 'berkas') {
+    Auth::require('santri.profil');
+    $berkasError = '';
+    $bolehUnggah = Auth::can('santri.edit');
+    if (is_post() && str_starts_with(in_str('aksi_berkas'), 'drive_')) {
+        csrf_check();
+        if (!$adminDrive) { http_response_code(403); exit('Hanya admin yang dapat menghubungkan Google Drive.'); }
+        try {
+            if (in_str('aksi_berkas') === 'drive_connect') {
+                redirect(GoogleDriveLH::mulai($id, (int) Auth::id())); exit;
+            }
+            if (in_str('aksi_berkas') === 'drive_confirm') {
+                GoogleDriveLH::konfirmasi((int) Auth::id()); flash('Akun Google Drive yayasan berhasil dihubungkan.');
+            } elseif (in_str('aksi_berkas') === 'drive_cancel') {
+                unset($_SESSION['lh_drive_pending']);
+            }
+            redirect('?p=santri_detail&id=' . $id . '&tab=berkas'); exit;
+        } catch (InvalidArgumentException $ex) { $berkasError = $ex->getMessage(); }
+    }
+    if (is_post() && !str_starts_with(in_str('aksi_berkas'), 'drive_')) {
+        Auth::require('santri.edit');
+        csrf_check();
+        try {
+            if (in_str('aksi_berkas') === 'hapus') {
+                if (in_str('konfirmasi_hapus') !== 'ya') {
+                    throw new InvalidArgumentException('Konfirmasi penghapusan terlebih dahulu.');
+                }
+                GoogleDriveLH::locked(static fn() => Berkas::hapusSantri($id, in_str('hapus_file')));
+                flash('Berkas lokal berhasil dihapus. Salinan yang pernah terkirim ke Drive tetap disimpan.');
+                redirect('?p=santri_detail&id=' . $id . '&tab=berkas');
+                exit;
+            }
+            if (in_str('aksi_berkas') === 'kirim_drive') {
+                Berkas::kirimDrive($id, in_str('kirim_file'), $s);
+                flash('Berkas berhasil terkirim ke Google Drive yayasan.');
+                redirect('?p=santri_detail&id=' . $id . '&tab=berkas'); exit;
+            }
+            $unggahan = $_FILES['berkas'] ?? null;
+            if (!is_array($unggahan)) {
+                throw new InvalidArgumentException('Berkas belum diterima. Pilih berkas maksimal 5 MB.');
+            }
+            $namaBaru = Berkas::unggahSantri($id, in_str('jenis_berkas'), $unggahan, in_str('nama_berkas'));
+            $pesanUpload = 'Berkas tersimpan di sistem. Google Drive belum terhubung.';
+            try {
+                if (GoogleDriveLH::info()['aktif']) {
+                    Berkas::kirimDrive($id, $namaBaru, $s);
+                    $pesanUpload = 'Berkas tersimpan di sistem dan terkirim ke Google Drive yayasan.';
+                }
+            } catch (InvalidArgumentException $ex) {
+                $pesanUpload = 'Berkas tersimpan di sistem, tetapi belum terkirim ke Drive. ' . $ex->getMessage() . ' Gunakan tombol Kirim ke Drive untuk mencoba lagi.';
+            }
+            flash($pesanUpload);
+            redirect('?p=santri_detail&id=' . $id . '&tab=berkas');
+            exit;
+        } catch (InvalidArgumentException $ex) {
+            $berkasError = $ex->getMessage();
+        }
+    }
+    $daftarBerkas = Berkas::daftarSantri($id);
+    $konfirmasiHapus = null;
+    if ($bolehUnggah && in_str('hapus_file') !== '') {
+        foreach ($daftarBerkas as $b) {
+            if ($b['file'] === in_str('hapus_file')) { $konfirmasiHapus = $b; break; }
+        }
+        if (!$konfirmasiHapus && !$berkasError) {
+            $berkasError = 'Berkas yang akan dihapus tidak ditemukan.';
+        }
+    }
+    $fileDiminta = in_str('berkas_file');
+    if ($fileDiminta !== '') {
+        $ditemukan = false;
+        foreach ($daftarBerkas as $b) {
+            if ($b['file'] === $fileDiminta) { $ditemukan = true; break; }
+        }
+        $jalur = $ditemukan ? Berkas::jalur($fileDiminta) : null;
+        if (!$jalur) {
+            http_response_code(404);
+            render('Tidak ditemukan', '<div class="card">Berkas tidak ditemukan.</div>');
+            exit;
+        }
+        header('Content-Type: ' . Berkas::mime($fileDiminta));
+        header('Content-Disposition: inline; filename="' . $fileDiminta . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header('Content-Length: ' . filesize($jalur));
+        readfile($jalur);
+        exit;
+    }
+    $driveInfo = ['email' => '', 'aktif' => false, 'folder_id' => ''];
+    try { $driveInfo = GoogleDriveLH::info(); } catch (InvalidArgumentException $ex) { $berkasError = $berkasError ?: $ex->getMessage(); }
+    $pendingDrive = $adminDrive ? ($_SESSION['lh_drive_pending'] ?? null) : null;
+    if ($pendingDrive && ($pendingDrive['uid'] !== (int) Auth::id() || $pendingDrive['expires'] < time())) $pendingDrive = null;
+    ob_start(); ?>
+    <div class="page-h">
+      <div><h1>Berkas Santri</h1><p><?= e($s['nama']) ?> &middot; <?= e($s['nis']) ?></p></div>
+      <a class="btn ghost" href="?p=santri_detail&amp;id=<?= $id ?>">Kembali ke detail</a>
+    </div>
+    <?php if ($berkasError): ?><div class="note err"><?= e($berkasError) ?></div><?php endif; ?>
+    <div class="card">
+      <h2>Google Drive Yayasan</h2>
+      <?php if ($driveInfo['aktif']): ?>
+        <p>Terhubung: <b><?= e($driveInfo['email']) ?></b>. Upload baru akan otomatis dikirim ke Drive.</p>
+        <?php if ($adminDrive && $driveInfo['folder_id']): ?><p><a target="_blank" rel="noopener" href="https://drive.google.com/drive/folders/<?= e($driveInfo['folder_id']) ?>">Buka folder yayasan</a></p><?php endif; ?>
+      <?php else: ?><p>Belum terhubung. Berkas tetap dapat disimpan di sistem.</p><?php endif; ?>
+      <?php if ($adminDrive): ?>
+        <?php if ($pendingDrive): ?>
+          <p>Gunakan akun <b><?= e($pendingDrive['connection']['email']) ?></b> sebagai Drive yayasan? Berkas santri akan dikirim ke akun ini.</p>
+          <form method="post" action="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas" class="acts">
+            <?= csrf_field() ?>
+            <button class="btn" name="aksi_berkas" value="drive_confirm">Ya, gunakan akun yayasan ini</button>
+            <button class="btn ghost" name="aksi_berkas" value="drive_cancel">Batal</button>
+          </form>
+        <?php elseif (GoogleDriveLH::siap()): ?>
+          <form method="post" action="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas">
+            <?= csrf_field() ?><button class="btn ghost" name="aksi_berkas" value="drive_connect"><?= $driveInfo['aktif'] ? 'Hubungkan ulang Google Drive' : 'Hubungkan Google Drive' ?></button>
+          </form>
+        <?php else: ?>
+          <p>Pengaturan koneksi Google belum lengkap. Ikuti PETUNJUK_GOOGLE_DRIVE.txt untuk mengaktifkan tombol login.</p>
+          <button class="btn ghost" disabled>Hubungkan Google Drive</button>
+        <?php endif; ?>
+      <?php elseif (!$driveInfo['aktif']): ?><p>Hubungi admin yayasan untuk menghubungkan akun Google.</p><?php endif; ?>
+    </div>
+    <?php if ($konfirmasiHapus): ?>
+    <form method="post" action="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas" class="card">
+      <h2>Hapus berkas ini?</h2>
+      <p><b><?= e(Berkas::labelSantri($konfirmasiHapus)) ?></b> — <?= e($konfirmasiHapus['tanggal']) ?></p>
+      <p>Berkas akan dihapus permanen dari sistem ini. Salinan yang sudah terkirim ke Google Drive tetap ada sebagai cadangan; hapus terpisah di Drive bila diperlukan.</p>
+      <?= csrf_field() ?>
+      <input type="hidden" name="aksi_berkas" value="hapus">
+      <input type="hidden" name="hapus_file" value="<?= e($konfirmasiHapus['file']) ?>">
+      <input type="hidden" name="konfirmasi_hapus" value="ya">
+      <div class="acts">
+        <button type="submit" class="btn" style="background:var(--err)">Ya, hapus berkas</button>
+        <a class="btn ghost" href="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas">Batal</a>
+      </div>
+    </form>
+    <?php endif; ?>
+    <?php if ($bolehUnggah): ?>
+    <form method="post" action="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas" enctype="multipart/form-data" class="card">
+      <h2>Upload berkas</h2>
+      <?= csrf_field() ?>
+      <input type="hidden" name="MAX_FILE_SIZE" value="<?= Berkas::MAKS_BYTE ?>">
+      <label>Jenis berkas <select name="jenis_berkas" id="jenisBerkas" required>
+        <option value="">Pilih jenis berkas</option>
+        <?php foreach (Berkas::JENIS_SANTRI as $k => $label): ?><option value="<?= e($k) ?>"<?= in_str('jenis_berkas') === $k ? ' selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+      </select></label>
+      <label id="namaBerkasLabel">Nama berkas (wajib untuk Berkas lainnya)
+        <input type="text" name="nama_berkas" id="namaBerkas" maxlength="100" value="<?= e(in_str('nama_berkas')) ?>" placeholder="Contoh: Surat keterangan sehat">
+      </label>
+      <label>Pilih file <input type="file" name="berkas" accept=".pdf,.jpg,.jpeg,.png" required></label>
+      <p class="mut">PDF, JPG, atau PNG. Maksimal 5 MB per file. Unggah satu per satu.</p>
+      <button class="btn" type="submit"><?= icon('upload') ?> Upload berkas</button>
+    </form>
+    <?php endif; ?>
+    <div class="card"><h2>Berkas tersimpan</h2>
+      <?php if (!$daftarBerkas && empty($s['surat_rekomendasi'])): ?>
+        <p class="mut">Belum ada berkas tersimpan untuk santri ini.</p>
+      <?php else: ?>
+      <div class="scroll"><table class="rt">
+        <thead><tr><th>Jenis berkas</th><th>Diunggah</th><th>Ukuran</th><th>Google Drive</th><th>Aksi</th></tr></thead>
+        <tbody>
+        <?php if (!empty($s['surat_rekomendasi'])): ?>
+          <tr><td data-label="Jenis berkas">Surat rekomendasi (data sebelumnya)</td><td data-label="Diunggah">—</td><td data-label="Ukuran">—</td><td data-label="Google Drive">Data lama; belum disalin</td><td data-label="Aksi"><a class="btn sm ghost" target="_blank" rel="noopener" href="?p=dokumen&amp;jenis=surat&amp;id=<?= $id ?>">Lihat</a></td></tr>
+        <?php endif; ?>
+        <?php foreach ($daftarBerkas as $b): ?>
+          <tr><td data-label="Jenis berkas"><?= e(Berkas::labelSantri($b)) ?></td>
+          <td data-label="Diunggah"><?= e($b['tanggal']) ?></td>
+          <td data-label="Ukuran"><?= number_format((int) $b['ukuran'] / 1024, 1, ',', '.') ?> KB</td>
+          <td data-label="Google Drive">
+            <?php if (($b['drive_status'] ?? '') === 'terkirim'): ?>
+              <span>Terkirim</span><br><small><?= e($b['drive_waktu'] ?? '') ?></small>
+            <?php else: ?>
+              <span>Belum terkirim</span>
+              <?php if ($bolehUnggah && $driveInfo['aktif']): ?>
+                <form method="post" action="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas" style="margin-top:6px">
+                  <?= csrf_field() ?><input type="hidden" name="aksi_berkas" value="kirim_drive">
+                  <input type="hidden" name="kirim_file" value="<?= e($b['file']) ?>">
+                  <button class="btn sm ghost">Kirim ke Drive</button>
+                </form>
+              <?php endif; ?>
+            <?php endif; ?>
+          </td>
+          <td data-label="Aksi"><a class="btn sm ghost" target="_blank" rel="noopener" href="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas&amp;berkas_file=<?= e($b['file']) ?>">Lihat</a>
+            <?php if ($bolehUnggah): ?><a class="btn sm ghost" style="color:var(--err)" href="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas&amp;hapus_file=<?= e($b['file']) ?>">Hapus</a><?php endif; ?>
+          </td></tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table></div>
+      <?php endif; ?>
+    </div>
+    <script>
+    (function () {
+      var jenis = document.getElementById('jenisBerkas');
+      var nama = document.getElementById('namaBerkas');
+      var label = document.getElementById('namaBerkasLabel');
+      if (!jenis || !nama || !label) return;
+      function sesuaikanNama() {
+        var lainnya = jenis.value === 'lainnya';
+        label.hidden = !lainnya;
+        label.style.display = lainnya ? '' : 'none';
+        nama.required = lainnya;
+        nama.disabled = !lainnya;
+      }
+      jenis.addEventListener('change', sesuaikanNama);
+      sesuaikanNama();
+    })();
+    </script>
+    <?php render('Berkas Santri', ob_get_clean());
+    exit;
+}
+
 $keu = Auth::can('tagihan.view');
 $tagihan = $keu ? Spp::tagihanSantri($id) : [];
 $riwayat = $keu ? Spp::riwayatSantri($id, 15) : [];
@@ -19,6 +244,7 @@ ob_start(); ?>
   <div class="acts">
     <?php if (Auth::can('bayar')): ?><a class="btn" href="?p=bayar&amp;santri=<?= $id ?>"><?= icon('credit-card') ?> Bayar</a><?php endif; ?>
     <a class="btn ghost" href="?p=riwayat&amp;id=<?= $id ?>"><?= icon('clipboard') ?> Riwayat</a>
+    <?php if (Auth::can('santri.profil')): ?><a class="btn ghost" href="?p=santri_detail&amp;id=<?= $id ?>&amp;tab=berkas"><?= icon('file-text') ?> Berkas Santri</a><?php endif; ?>
     <?php if (Auth::can('santri.edit')): ?><a class="btn ghost" href="?p=santri_form&amp;id=<?= $id ?>"><?= icon('edit') ?> Ubah</a><?php endif; ?>
     <?php if ($wa): ?><a class="btn wa" href="<?= e($wa) ?>" target="_blank" rel="noopener"><?= icon('message') ?> WhatsApp wali</a><?php endif; ?>
   </div>
@@ -54,6 +280,8 @@ ob_start(); ?>
     </dl>
   </div>
 </div>
+
+
 
 <?php if (Auth::can('santri.profil')): $pfv = static fn(string $k) => e((string) ($pf[$k] ?? '')) ?: '-'; ?>
 <div class="grid g2" style="margin-bottom:16px">
